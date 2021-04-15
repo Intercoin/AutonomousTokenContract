@@ -11,7 +11,7 @@ contract TradedTokenContractMock is TradedTokenContract {
      *
      * See {ERC20-_mint}.
      */
-    function mint(address account, uint256 amount) public onlyOwner override  {
+    function mint(address account, uint256 amount) public onlyOwner virtual  {
         bytes memory userData = bytes('');
         bytes memory operatorData=bytes('');
         _mint(account, amount, userData, operatorData);

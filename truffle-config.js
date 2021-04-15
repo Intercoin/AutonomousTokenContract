@@ -28,6 +28,7 @@ require('dotenv').config();
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 
+// ganache-cli  romance trend harsh sniff success ice unfold improve notice recycle quote desk
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -46,11 +47,11 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-    development: {
-     host: "127.0.0.1",     // Localhost (default: none)
-     port: 8545,            // Standard Ethereum port (default: none)
-     network_id: "*",       // Any network (default: none)
-    },
+    // development: {
+    //  host: "127.0.0.1",     // Localhost (default: none)
+    //  port: 8545,            // Standard Ethereum port (default: none)
+    //  network_id: "*",       // Any network (default: none)
+    // },
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
@@ -101,6 +102,13 @@ module.exports = {
     },
     bscmain: {
       provider: () => new HDWalletProvider(process.env.private_key, `https://bsc-dataseed.binance.org/`),
+      network_id: 56,//0x38,
+      confirmations: 10,
+      timeoutBlocks: 200,
+      skipDryRun: true
+    },
+    fork_bscmain: {
+      provider: () => new HDWalletProvider(process.env.private_key, `http://localhost:8545/`),
       network_id: 56,//0x38,
       confirmations: 10,
       timeoutBlocks: 200,

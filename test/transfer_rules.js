@@ -43,6 +43,7 @@ contract('TransferRules', (accounts) => {
     const name = 'ITR Token TEST';
     const symbol = 'ITRT';
     const defaultOperators = [];
+    const ownersAddrs = [accountNine, accountTen];
     
     const duration1Day = 86_400;       // 1 year
     const durationLockupUSAPerson = 31_536_000;       // 1 year
@@ -86,7 +87,7 @@ contract('TransferRules', (accounts) => {
         this.TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
         await this.TransferRulesInstance.init({from: accountTen});
     });
-
+/*
     it('create and initialize', async () => {
         //var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
         helperCostEth.transactionPush(this.TransferRulesInstance, 'TransferRulesInstance::new');
@@ -506,7 +507,11 @@ contract('TransferRules', (accounts) => {
         // );
 
     });
+*/
 
+    it('test', async () => {
+      
+    }); 
 
     it('summary transactions cost', async () => {
         
