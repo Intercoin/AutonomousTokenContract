@@ -1,0 +1,19 @@
+{
+  "name": "tradedtokencontact",
+  "version": "1.0.0",
+  "description": "Contract for issuing tokens to be sold to others, and traded on exchanges.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Intercoin/TradedTokenContact.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Intercoin/TradedTokenContact/issues"
+  },
+  "homepage": "https://github.com/Intercoin/TradedTokenContact#readme"
+}
