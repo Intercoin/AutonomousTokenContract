@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC777/ERC777Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
@@ -12,11 +12,11 @@ import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import "./interfaces/ITransferRules.sol";
 import "./IntercoinTrait.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20RecipientUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820ImplementerUpgradeable.sol";
 
 
-contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable {
+contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinTrait, /*IERC20RecipientUpgradeable, */ERC1820ImplementerUpgradeable {
     using SafeMathUpgradeable for uint256;
 
     address public uniswapRouter;
@@ -72,7 +72,7 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
     
     //to recieve ETH from uniswapV2Router when swaping
     receive() external payable {}
-    
+    /*
     function tokensReceived(
         address operator,
         address from,
@@ -89,7 +89,7 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
         // do stuff
         //emit DoneStuff(operator, from, to, amount, userData, operatorData);
     }
-    
+    */
     function initialize(
         string memory name, 
         string memory symbol, 
@@ -123,12 +123,12 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
         initialPriceSet = false;
     
         __Ownable_init();
-        __ERC777_init(name, symbol, defaultOperators);
+        __ERC20_init(name, symbol/*, defaultOperators*/);
         __ERC1820Implementer_init();
         
-        _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensRecipient"), address(this));
+       // _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensRecipient"), address(this));
         
-        _mint(address(this), 1_000_000_000 * 10 ** 18, "", "");
+        _mint(address(this), 1_000_000_000 * 10 ** 18/*, "", ""*/);
         
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(uniswapRouter);
         
@@ -258,7 +258,7 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
                 path[1] = uniswapV2Router.WETH();
                 
                 
-                _mint(address(this), sellTokenAmount, "", "");
+                _mint(address(this), sellTokenAmount/*, "", ""*/);
                 
                 
                 
@@ -343,7 +343,7 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
     }
     
     function _beforeTokenTransfer(
-        address operator, 
+        /*address operator, */
         address from, 
         address to, 
         uint256 amount
@@ -371,11 +371,11 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
         emit RulesUpdated(rules);
         return true;
     }
-    
+    /*
     function bulkTransfer(address[] memory _recipients, uint256 _amount, bytes memory _data) public {
         for (uint256 i = 0; i < _recipients.length; i++) {
             operatorSend(msg.sender, _recipients[i], _amount, _data, "");
         }
     }
-  
+  */
 }
