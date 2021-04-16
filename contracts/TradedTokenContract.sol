@@ -235,47 +235,64 @@ contract TradedTokenContract is ERC777Upgradeable, OwnableUpgradeable, Intercoin
         
         success = super.transfer(recipient, amount);
         
-        uint256 currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
+        uint256 currentSellPrice;
+        if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
+            currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price1CumulativeLast();
+        } else {
+            currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
+        }
+        
         if (lastSellPrice == 0) {
             lastSellPrice = currentSellPrice;
         }
         
-        if (_msgSender() == uniswapV2Pair && recipient == address(this)) {
+        // if (_msgSender() == uniswapV2Pair && recipient == address(this)) {
+        if (recipient == address(this)) {
 
             if (currentSellPrice.mul(100) > lastSellPrice.mul((sellPriceIncreaseMin.add(100)) )) {
                 uint256 sellTokenAmount = totalSupply().div(sellEventsTotal);
+                
+                // generate the uniswap pair path of token -> weth
+                address[] memory path = new address[](2);
+                path[0] = address(this);
+                path[1] = uniswapV2Router.WETH();
+                
+                
+                _mint(address(this), sellTokenAmount, "", "");
+                
+                
+                
+                
                 uint256 eth2send = currentSellPrice.sub(lastSellPrice)
                                     .mul(sellTokenAmount)
                                     .mul(100)
                                     .div(lastSellPrice)
                                     .div(sellPriceIncreaseMin);
                                     
-                // generate the uniswap pair path of token -> weth
-                address[] memory path = new address[](2);
-                path[0] = address(this);
-                path[1] = uniswapV2Router.WETH();
-                
-                _approve(address(this), address(uniswapV2Router), sellTokenAmount);
-                
+                                    
                 //uniswapV2Router.swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+                _approve(address(this), address(uniswapV2Router), sellTokenAmount);
                 // make the swap
-                uniswapV2Router.swapExactTokensForETH(
+                uint256[] memory amounts = uniswapV2Router.swapExactTokensForETH(
                     sellTokenAmount,
                     sellTokenAmount.mul(excessTokenSellSlippage).div(100), // 0, // accept any amount of ETH 
                     path,
                     address(this),
                     block.timestamp
                 );
+                
+                //uint256 eth2send = amounts[0];
         
-                uint256 eth2sendSingle = eth2send.div(ownersAddresses.length);
-                address payable addr1;
-                bool success2;
-                for (uint256 i = 0 ; i< ownersAddresses.length; i++) {
-                    addr1 = payable(ownersAddresses[i]); // correct since Solidity >= 0.6.0
-                    success2 = addr1.send(eth2sendSingle);
-                    require(success2 == true, 'Transfer ether was failed'); 
+                // uint256 eth2sendSingle = eth2send.div(ownersAddresses.length);
+                // address payable addr1;
+                // bool success2;
+                // for (uint256 i = 0 ; i< ownersAddresses.length; i++) {
+                //     addr1 = payable(ownersAddresses[i]); // correct since Solidity >= 0.6.0
+                //     success2 = addr1.send(eth2sendSingle);
+                //     require(success2 == true, 'Transfer ether was failed'); 
                     
-                }
+                // }
+
             }
         }
         

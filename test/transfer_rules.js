@@ -5,6 +5,10 @@ const TransferRulesMock = artifacts.require("TransferRulesMock");
 //const ExternalItrImitationMock = artifacts.require("ExternalItrImitationMock");
 const TradedTokenContractMock = artifacts.require("TradedTokenContractMock");
 
+const uniswapV2Router = artifacts.require("IUniswapV2Router02");
+const uniswapPair = artifacts.require("IUniswapV2Pair");
+const IERC20Upgradeable = artifacts.require("IERC20Upgradeable");
+
 
 const truffleAssert = require('truffle-assertions');
 const helper = require("../helpers/truffleTestHelper");
@@ -49,6 +53,8 @@ contract('TransferRules', (accounts) => {
     const durationLockupUSAPerson = 31_536_000;       // 1 year
     const durationLockupNoneUSAPerson = 3_456_000;    // 40 days
     
+    const ts2050y = 2525644800;
+    
     var erc1820;
     
     
@@ -78,6 +84,27 @@ contract('TransferRules', (accounts) => {
             "wrong balance for 2nd account "+message
         )
     }
+    async function statsView(objThis) {
+        console.log('================================');
+        console.log('price0CumulativeLast=', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
+	    console.log('price1CumulativeLast=', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
+	    let tmp = await objThis.uniswapV2PairInstance.getReserves();
+	    console.log('getReserves[reserve0]=', (tmp.reserve0).toString());
+	    console.log('getReserves[reserve1]=', (tmp.reserve1).toString());
+	    console.log('getReserves[blockTimestampLast]=', (tmp.blockTimestampLast).toString());
+	    console.log('=======================');
+	    console.log('accountOne(ETH)=', (await web3.eth.getBalance(accountOne)).toString());	    
+	    console.log('accountOne(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountOne)).toString());
+	    console.log('accountTwo(ETH)=', (await web3.eth.getBalance(accountTwo)).toString());	    
+	    console.log('accountTwo(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTwo)).toString());
+	    console.log('accountThree(ETH)=', (await web3.eth.getBalance(accountThree)).toString());	    
+	    console.log('accountThree(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountThree)).toString());
+	    console.log('accountTen(ETH)=', (await web3.eth.getBalance(accountTen)).toString());	    
+	    console.log('accountTen(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTen)).toString());
+	    console.log('ITRContract(ETH)=', (await web3.eth.getBalance(objThis.TradedTokenContractMockInstance.address)).toString());	    
+	    console.log('ITRContract(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
+	    console.log('================================');
+    }
     
     var TransferRulesInstance;
     beforeEach(async() =>{
@@ -86,6 +113,34 @@ contract('TransferRules', (accounts) => {
         //TransferRulesInstance = await deployProxy(TransferRulesMock);
         this.TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
         await this.TransferRulesInstance.init({from: accountTen});
+        
+        
+        this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
+	    this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, ownersAddrs, {from: accountTen});
+	    this.TradedTokenContractMockInstance.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
+	    this.TradedTokenContractMockInstance.setInitialPrice(100000, {from: accountTen});
+	    
+	    let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
+	    let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();
+	    
+	    this.uniswapV2RouterInstance = await uniswapV2Router.at(uniswapV2RouterAddr);
+	    this.uniswapV2PairInstance = await uniswapPair.at(uniswapV2PairAddr);
+	    
+	    let WETHAddr = await this.uniswapV2RouterInstance.WETH();
+	    let token0 = await this.uniswapV2PairInstance.token0();
+	    let token1 = await this.uniswapV2PairInstance.token1();
+	    this.pathETHToken = [
+	        (WETHAddr == token1 ? token1 : token0), 
+	        (WETHAddr == token1 ? token0 : token1)
+        ];
+	    this.pathTokenETH = [
+	        (WETHAddr == token1 ? token0 : token1), 
+	        (WETHAddr == token1 ? token1 : token0)
+	    ];
+	    
+	    this.WETHInstance = await IERC20Upgradeable.at((WETHAddr == token1 ? token1 : token0));
+	    
+	    
     });
 /*
     it('create and initialize', async () => {
@@ -509,10 +564,78 @@ contract('TransferRules', (accounts) => {
     });
 */
 
+    
     it('test', async () => {
-      
+        var objThis = this;
+	   // // send ETH to Contract
+    //     await web3.eth.sendTransaction({
+    //         from:accountOne,
+    //         to: token0, 
+    //         value: '0x'+BigNumber(40e18).toString(16)
+            
+    //     });
+	    
+	    await statsView(this);
+	    
+	    
+// 	   tmp = await uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(12e18).toString(16), pathTokenETH);
+// 	   console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
+	   
+// 	  // 601202 404809619238476954
+	  
+// 	  1202501009700015
+// 	   tmp = await uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(10e18).toString(16), pathTokenETH);
+// 	   console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
+	    
+	   // tmp = await this.uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(1e18).toString(16), this.pathTokenETH);
+	   // console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
+	    
+	   
+        //let accountsArr = [accountOne, accountTwo, accountThree, accountFourth, accountFive, accountSix, accountSeven, accountEight];
+        let accountsArr = [accountOne, accountTwo];
+    
+	    for(var i=0 ; i<9; i++) {
+	        for(var j=0 ; j<accountsArr.length; j++) {
+	            
+        	    await this.uniswapV2RouterInstance.swapExactETHForTokens(
+        	        '0x'+BigNumber(10e18).toString(16),
+        	        objThis.pathETHToken,
+        	        accountsArr[j], 
+        	        ts2050y, {from: accountsArr[j], value:'0x'+BigNumber(10e18).toString(16)}
+                );
+	        }
+            
+    	    await statsView(objThis);
+	    }
+	    let balanceAccountTwo = await this.TradedTokenContractMockInstance.balanceOf(accountTwo);
+	    
+	    await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, balanceAccountTwo, {from: accountTwo});
+	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
+            balanceAccountTwo,
+            0, // accept any amount of ETH 
+            objThis.pathTokenETH,
+            accountTwo,
+            ts2050y, {from: accountTwo}
+        );
+        await statsView(objThis);
+	    
+	    
+// 	    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+//   external
+//   returns (uint[] memory amounts);
+  
+	   //  uniswapV2Router.addLiquidityETH{value: ethAmount}(
+    //         address(this),
+    //         tokenAmount,
+    //         0, // slippage is unavoidable
+    //         0, // slippage is unavoidable
+    //         owner(),
+    //         block.timestamp
+    //     );
+        
+	    
     }); 
-
+/*
     it('summary transactions cost', async () => {
         
         //
@@ -521,5 +644,5 @@ contract('TransferRules', (accounts) => {
         
     });
 
-  /**/
+  */
 });
