@@ -247,7 +247,7 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
         }
         
         // if (_msgSender() == uniswapV2Pair && recipient == address(this)) {
-        if (recipient == address(this)) {
+        if (true) {
 
             if (currentSellPrice.mul(100) > lastSellPrice.mul((sellPriceIncreaseMin.add(100)) )) {
                 uint256 sellTokenAmount = totalSupply().div(sellEventsTotal);
@@ -263,11 +263,11 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
                 
                 
                 
-                uint256 eth2send = currentSellPrice.sub(lastSellPrice)
-                                    .mul(sellTokenAmount)
-                                    .mul(100)
-                                    .div(lastSellPrice)
-                                    .div(sellPriceIncreaseMin);
+                // uint256 eth2send = currentSellPrice.sub(lastSellPrice)
+                //                     .mul(sellTokenAmount)
+                //                     .mul(100)
+                //                     .div(lastSellPrice)
+                //                     .div(sellPriceIncreaseMin);
                                     
                                     
                 //uniswapV2Router.swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
