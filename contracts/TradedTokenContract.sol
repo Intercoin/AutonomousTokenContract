@@ -69,9 +69,18 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
     function donateETH() public payable {
         
     }
+event TestMessage(
+    uint256 lastSellPrice,
+    uint256 currentSellPrice,
+    uint256 sellTokenAmount,
+    uint256 currentethBalance
     
+);    
     //to recieve ETH from uniswapV2Router when swaping
-    receive() external payable {}
+    receive() external payable {
+    
+        
+    }
     /*
     function tokensReceived(
         address operator,
@@ -168,7 +177,7 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
             tokenAmount,
             0, // slippage is unavoidable
             0, // slippage is unavoidable
-            owner(),
+            address(this),
             block.timestamp
         );
         
@@ -242,14 +251,17 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
             currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
         }
         
-        if (lastSellPrice == 0) {
-            lastSellPrice = currentSellPrice;
-        }
-        
+        // if (lastSellPrice == 0) {
+        //     lastSellPrice = currentSellPrice;
+        // }
+        /**/
         // if (_msgSender() == uniswapV2Pair && recipient == address(this)) {
-        if (true) {
+        if (recipient == uniswapV2Pair) {
+            
 
             if (currentSellPrice.mul(100) > lastSellPrice.mul((sellPriceIncreaseMin.add(100)) )) {
+                lastSellPrice = currentSellPrice;
+                
                 uint256 sellTokenAmount = totalSupply().div(sellEventsTotal);
                 
                 // generate the uniswap pair path of token -> weth
@@ -257,7 +269,13 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
                 path[0] = address(this);
                 path[1] = uniswapV2Router.WETH();
                 
-                
+// emit TestMessage(
+//     lastSellPrice,
+//     currentSellPrice,
+//     sellTokenAmount,
+//     address(this).balance
+// );      
+
                 _mint(address(this), sellTokenAmount/*, "", ""*/);
                 
                 
@@ -295,6 +313,7 @@ contract TradedTokenContract is ERC20Upgradeable, OwnableUpgradeable, IntercoinT
 
             }
         }
+        /**/
         
         return success;
     }

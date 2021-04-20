@@ -86,27 +86,48 @@ contract('TransferRules', (accounts) => {
     }
     async function statsView(objThis) {
         console.log('================================');
+        console.log('token0=', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
+	    console.log('price1CumulativeLast=', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
         console.log('price0CumulativeLast=', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
 	    console.log('price1CumulativeLast=', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
 	    let tmp = await objThis.uniswapV2PairInstance.getReserves();
 	    console.log('getReserves[reserve0]=', (tmp.reserve0).toString());
 	    console.log('getReserves[reserve1]=', (tmp.reserve1).toString());
 	    console.log('getReserves[blockTimestampLast]=', (tmp.blockTimestampLast).toString());
+	    
+	    console.log('=WETH======================');
+	    console.log('accountOne(WETH)  =', (await objThis.WETHInstance.balanceOf(accountOne)).toString());
+	    console.log('accountTwo(WETH)  =', (await objThis.WETHInstance.balanceOf(accountTwo)).toString());
+	    console.log('accountThree(WETH)=', (await objThis.WETHInstance.balanceOf(accountThree)).toString());
+	    console.log('Pair(WETH)        =', (await objThis.WETHInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
+	    console.log('ITRContract(WETH) =', (await objThis.WETHInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
+	    console.log('=ETH======================');
+	    console.log('accountOne(ETH)   =', (await web3.eth.getBalance(accountOne)).toString());	    
+	    console.log('accountTwo(ETH)   =', (await web3.eth.getBalance(accountTwo)).toString());
+	    console.log('accountThree(ETH) =', (await web3.eth.getBalance(accountThree)).toString());	    	
+	    console.log('accountTen(ETH)   =', (await web3.eth.getBalance(accountTen)).toString());	    
+	    console.log('Pair(ETH)         =', (await web3.eth.getBalance(objThis.uniswapV2PairInstance.address)).toString());
+	    console.log('ITRContract(ETH)  =', (await web3.eth.getBalance(objThis.TradedTokenContractMockInstance.address)).toString());	    
+	    console.log('=ITR======================');
+	    console.log('accountOne(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountOne)).toString());
+	    console.log('accountTwo(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTwo)).toString());
+	    console.log('accountThree(ITR) =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountThree)).toString());
+	    console.log('accountTen(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTen)).toString());
+	    console.log('Pair(ITR)         =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
+	    console.log('ITRContract(ITR)  =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
 	    console.log('=======================');
-	    console.log('accountOne(ETH)=', (await web3.eth.getBalance(accountOne)).toString());	    
-	    console.log('accountOne(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountOne)).toString());
-	    console.log('accountTwo(ETH)=', (await web3.eth.getBalance(accountTwo)).toString());	    
-	    console.log('accountTwo(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTwo)).toString());
-	    console.log('accountThree(ETH)=', (await web3.eth.getBalance(accountThree)).toString());	    
-	    console.log('accountThree(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountThree)).toString());
-	    console.log('accountTen(ETH)=', (await web3.eth.getBalance(accountTen)).toString());	    
-	    console.log('accountTen(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTen)).toString());
-	    console.log('ITRContract(ETH)=', (await web3.eth.getBalance(objThis.TradedTokenContractMockInstance.address)).toString());	    
-	    console.log('ITRContract(ITR)=', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
+	    console.log('accountOne(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountOne)).toString());
+	    console.log('accountTwo(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountTwo)).toString());
+	    console.log('accountThree(CAKE)=', (await objThis.uniswapV2PairInstance.balanceOf(accountThree)).toString());
+	    console.log('accountTen(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountTen)).toString());
+	    console.log('Pair(CAKE)        =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
+	    console.log('ITRContract(CAKE) =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
 	    console.log('================================');
     }
     
+    
     var TransferRulesInstance;
+    /* */
     beforeEach(async() =>{
         erc1820= await singletons.ERC1820Registry(accountNine);
 
@@ -119,12 +140,13 @@ contract('TransferRules', (accounts) => {
 	    this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, ownersAddrs, {from: accountTen});
 	    this.TradedTokenContractMockInstance.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
 	    this.TradedTokenContractMockInstance.setInitialPrice(100000, {from: accountTen});
-	    
+
 	    let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
 	    let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();
 	    
 	    this.uniswapV2RouterInstance = await uniswapV2Router.at(uniswapV2RouterAddr);
 	    this.uniswapV2PairInstance = await uniswapPair.at(uniswapV2PairAddr);
+
 	    
 	    let WETHAddr = await this.uniswapV2RouterInstance.WETH();
 	    let token0 = await this.uniswapV2PairInstance.token0();
@@ -142,6 +164,7 @@ contract('TransferRules', (accounts) => {
 	    
 	    
     });
+    /* */
 /*
     it('create and initialize', async () => {
         //var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
@@ -564,7 +587,39 @@ contract('TransferRules', (accounts) => {
     });
 */
 
-    
+/*
+it('test22', async () => {
+        
+        var T222 = await TradedTokenContractMock.new({from: accountTen});
+	    T222.initialize(name, symbol, defaultOperators, ownersAddrs, {from: accountTen});
+	   // this.TradedTokenContractMockInstance.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
+	   // this.TradedTokenContractMockInstance.setInitialPrice(100000, {from: accountTen});
+
+	    var uniswapV2RouterAddr = await T222.uniswapV2Router();
+	    var uniswapV2PairAddr = await T222.uniswapV2Pair();
+	    
+	    var uniswapV2RouterInstance = await uniswapV2Router.at(uniswapV2RouterAddr);
+	    var uniswapV2PairInstance = await uniswapPair.at(uniswapV2PairAddr);
+
+console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
+console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
+console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
+
+T222.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
+
+console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
+console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
+console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
+
+T222.setInitialPrice(100000, {from: accountTen});
+
+console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
+console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
+console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
+	    
+});
+*/
+/**/    
     it('test', async () => {
         var objThis = this;
 	   // // send ETH to Contract
@@ -607,8 +662,8 @@ contract('TransferRules', (accounts) => {
             
     	    await statsView(objThis);
 	    }
-	    let balanceAccountTwo = await this.TradedTokenContractMockInstance.balanceOf(accountTwo);
 	    
+	    let balanceAccountTwo = await this.TradedTokenContractMockInstance.balanceOf(accountTwo);
 	    await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, balanceAccountTwo, {from: accountTwo});
 	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
             balanceAccountTwo,
@@ -618,7 +673,29 @@ contract('TransferRules', (accounts) => {
             ts2050y, {from: accountTwo}
         );
         await statsView(objThis);
-	    
+        
+        let balanceAccountOne = await this.TradedTokenContractMockInstance.balanceOf(accountOne);
+	    await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, balanceAccountOne, {from: accountOne});
+	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
+            balanceAccountOne,
+            0, // accept any amount of ETH 
+            objThis.pathTokenETH,
+            accountOne,
+            ts2050y, {from: accountOne}
+        );
+        await statsView(objThis);
+
+
+	   // await this.TradedTokenContractMockInstance.getPastEvents('Transfer', {
+    //         filter: {addr: accountTwo}, 
+    //         fromBlock: 0,
+    //         toBlock: 'latest'
+    //     }, function(error, events){ })
+    //     .then(function(events){
+    //       //  console.log(events[0]);
+    //     });
+      
+
 	    
 // 	    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
 //   external
@@ -635,6 +712,7 @@ contract('TransferRules', (accounts) => {
         
 	    
     }); 
+  /* */  
 /*
     it('summary transactions cost', async () => {
         
