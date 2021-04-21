@@ -3,15 +3,10 @@ pragma solidity ^0.8.0;
 
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/ITradedTokenContract.sol";
 
-interface ITradedTokenContract {
-    //function setInitialPrice(uint256 price) external;
-    function initialize(string memory name, string memory symbol, address[] memory defaultOperators, address[] memory owners) external;
-    
-    
-}
-
-contract Factory is OwnableUpgradeable {
+contract TradedTokenFactory is OwnableUpgradeable {
+   
     address contractInstance;
     event Produced(address caller, address addr);
   
@@ -24,7 +19,10 @@ contract Factory is OwnableUpgradeable {
         string memory name, 
         string memory symbol, 
         address[] memory defaultOperators, 
-        address[] memory owners
+        ITradedTokenContract.SellTax memory _sellTax,
+        ITradedTokenContract.TransferTax memory _transfer,
+        ITradedTokenContract.ProgressiveTax memory _progressive,
+        ITradedTokenContract.OwnersList[] memory _ownersList
     ) 
         public 
         
@@ -33,7 +31,15 @@ contract Factory is OwnableUpgradeable {
         
         address proxy = createClone(address(contractInstance));
         
-        ITradedTokenContract(proxy).initialize(name,symbol,defaultOperators,owners);
+        ITradedTokenContract(proxy).initialize(
+            name,
+            symbol,
+            defaultOperators,
+            _sellTax,
+            _transfer,
+            _progressive,
+            _ownersList
+            );
 
         emit Produced(msg.sender, proxy);
         return proxy;
