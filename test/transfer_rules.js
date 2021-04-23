@@ -20,13 +20,7 @@ const { singletons } = require('@openzeppelin/test-helpers');
 
 const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades');
 
-contract('TransferRules', (accounts) => {
-    
-    // it("should assert true", async function(done) {
-    //     await TestExample.deployed();
-    //     assert.isTrue(true);
-    //     done();
-    //   });
+contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
     
     // Setup accounts.
     const accountOne = accounts[0];
@@ -47,7 +41,11 @@ contract('TransferRules', (accounts) => {
     const name = 'ITR Token TEST';
     const symbol = 'ITRT';
     const defaultOperators = [];
-    const ownersAddrs = [accountNine, accountTen];
+    
+    var sellTax=[100,10,10];
+    var transfer = [0,10,0];
+    var progressive=[5,100,3600];
+    var ownersList = [[accountNine,60], [accountTen,40]];
     
     const duration1Day = 86_400;       // 1 year
     const durationLockupUSAPerson = 31_536_000;       // 1 year
@@ -85,44 +83,42 @@ contract('TransferRules', (accounts) => {
         )
     }
     async function statsView(objThis) {
-        console.log('================================');
-        console.log('token0=', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
-	    console.log('price1CumulativeLast=', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
-        console.log('price0CumulativeLast=', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
-	    console.log('price1CumulativeLast=', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
+        
+        // console.log('================================');
+        //  console.log('price0CumulativeLast           =', (await objThis.uniswapV2PairInstance.price0CumulativeLast()).toString());
+	    // console.log('price1CumulativeLast           =', (await objThis.uniswapV2PairInstance.price1CumulativeLast()).toString());
 	    let tmp = await objThis.uniswapV2PairInstance.getReserves();
-	    console.log('getReserves[reserve0]=', (tmp.reserve0).toString());
-	    console.log('getReserves[reserve1]=', (tmp.reserve1).toString());
-	    console.log('getReserves[blockTimestampLast]=', (tmp.blockTimestampLast).toString());
+	    let price;
+	    console.log('getReserves[reserve0]          =', (tmp.reserve0).toString());
+	    console.log('getReserves[reserve1]          =', (tmp.reserve1).toString());
+        //console.log('tmp.reserve1/tmp.reserve0      =', (tmp.reserve1/tmp.reserve0).toString());
+        if (objThis.WETHAddr == objThis.token0) {
+            price = tmp.reserve0/tmp.reserve1;
+        } else {
+            price = tmp.reserve1/tmp.reserve0;    
+        }
+	    console.log('Price                          =', (price).toString());
 	    
+	   // console.log('getReserves[blockTimestampLast]=', (tmp.blockTimestampLast).toString());
+/*
 	    console.log('=WETH======================');
 	    console.log('accountOne(WETH)  =', (await objThis.WETHInstance.balanceOf(accountOne)).toString());
-	    console.log('accountTwo(WETH)  =', (await objThis.WETHInstance.balanceOf(accountTwo)).toString());
-	    console.log('accountThree(WETH)=', (await objThis.WETHInstance.balanceOf(accountThree)).toString());
 	    console.log('Pair(WETH)        =', (await objThis.WETHInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
 	    console.log('ITRContract(WETH) =', (await objThis.WETHInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
 	    console.log('=ETH======================');
 	    console.log('accountOne(ETH)   =', (await web3.eth.getBalance(accountOne)).toString());	    
-	    console.log('accountTwo(ETH)   =', (await web3.eth.getBalance(accountTwo)).toString());
-	    console.log('accountThree(ETH) =', (await web3.eth.getBalance(accountThree)).toString());	    	
-	    console.log('accountTen(ETH)   =', (await web3.eth.getBalance(accountTen)).toString());	    
 	    console.log('Pair(ETH)         =', (await web3.eth.getBalance(objThis.uniswapV2PairInstance.address)).toString());
 	    console.log('ITRContract(ETH)  =', (await web3.eth.getBalance(objThis.TradedTokenContractMockInstance.address)).toString());	    
 	    console.log('=ITR======================');
 	    console.log('accountOne(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountOne)).toString());
-	    console.log('accountTwo(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTwo)).toString());
-	    console.log('accountThree(ITR) =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountThree)).toString());
-	    console.log('accountTen(ITR)   =', (await objThis.TradedTokenContractMockInstance.balanceOf(accountTen)).toString());
 	    console.log('Pair(ITR)         =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
 	    console.log('ITRContract(ITR)  =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
 	    console.log('=======================');
 	    console.log('accountOne(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountOne)).toString());
-	    console.log('accountTwo(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountTwo)).toString());
-	    console.log('accountThree(CAKE)=', (await objThis.uniswapV2PairInstance.balanceOf(accountThree)).toString());
-	    console.log('accountTen(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountTen)).toString());
 	    console.log('Pair(CAKE)        =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
 	    console.log('ITRContract(CAKE) =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
-	    console.log('================================');
+*/
+	   // console.log('================================');
     }
     
     
@@ -135,176 +131,160 @@ contract('TransferRules', (accounts) => {
         this.TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
         await this.TransferRulesInstance.init({from: accountTen});
         
-        
+
         this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-	    this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, ownersAddrs, {from: accountTen});
+	    this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, sellTax, transfer, progressive, ownersList, {from: accountTen});
 	    this.TradedTokenContractMockInstance.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
 	    this.TradedTokenContractMockInstance.setInitialPrice(100000, {from: accountTen});
-
+	    
 	    let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
 	    let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();
-	    
 	    this.uniswapV2RouterInstance = await uniswapV2Router.at(uniswapV2RouterAddr);
 	    this.uniswapV2PairInstance = await uniswapPair.at(uniswapV2PairAddr);
 
-	    
-	    let WETHAddr = await this.uniswapV2RouterInstance.WETH();
-	    let token0 = await this.uniswapV2PairInstance.token0();
-	    let token1 = await this.uniswapV2PairInstance.token1();
+	    this.WETHAddr = await this.uniswapV2RouterInstance.WETH();
+	    this.token0 = await this.uniswapV2PairInstance.token0();
+	    this.token1 = await this.uniswapV2PairInstance.token1();
 	    this.pathETHToken = [
-	        (WETHAddr == token1 ? token1 : token0), 
-	        (WETHAddr == token1 ? token0 : token1)
+	        (this.WETHAddr == this.token1 ? this.token1 : this.token0), 
+	        (this.WETHAddr == this.token1 ? this.token0 : this.token1)
         ];
 	    this.pathTokenETH = [
-	        (WETHAddr == token1 ? token0 : token1), 
-	        (WETHAddr == token1 ? token1 : token0)
+	        (this.WETHAddr == this.token1 ? this.token0 : this.token1), 
+	        (this.WETHAddr == this.token1 ? this.token1 : this.token0)
 	    ];
-	    
-	    this.WETHInstance = await IERC20Upgradeable.at((WETHAddr == token1 ? token1 : token0));
-	    
+	    this.WETHInstance = await IERC20Upgradeable.at((this.WETHAddr == this.token1 ? this.token1 : this.token0));
 	    
     });
-    /* */
-/*
+    
+
     it('create and initialize', async () => {
-        //var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        helperCostEth.transactionPush(this.TransferRulesInstance, 'TransferRulesInstance::new');
+        let objThis = this;
         
-        // trTmp = await this.TransferRulesInstance.init({from: accountTen});
-        // helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::init');
+        helperCostEth.transactionPush(objThis.TransferRulesInstance, 'TransferRulesInstance::new');
+        
     });
-      
+    
     it('setERC test', async () => {
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-        await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        //---
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
         
         // _updateRestrictionsAndRules     
-        trTmp = await TradedTokenContractMockInstance._updateRestrictionsAndRules(zeroAddr, {from: accountTen});
+        trTmp = await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(zeroAddr, {from: accountTen});
         helperCostEth.transactionPush(trTmp, '_updateRestrictionsAndRules');
         
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(objThis.TransferRulesInstance.address, {from: accountTen});
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen}),
+            objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(objThis.TransferRulesInstance.address, {from: accountTen}),
             'external contract already set'
         );
         
     });
  
     it('owner can manage role `managers`', async () => {
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
         
         await truffleAssert.reverts(
-            this.TransferRulesInstance.managersAdd([accountOne], {from: accountFive}), 
+            objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         await truffleAssert.reverts(
-            this.TransferRulesInstance.managersRemove([accountOne], {from: accountFive}), 
+            objThis.TransferRulesInstance.managersRemove([accountOne], {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         
-        let managersGroupName = await this.TransferRulesInstance.getManagersGroupName({from: accountTen});
+        let managersGroupName = await objThis.TransferRulesInstance.getManagersGroupName({from: accountTen});
         
-        trTmp = await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::managersAdd');
-        tmpBool = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
         assert.equal(tmpBool, true, 'could not add manager');
         
-        trTmp = await this.TransferRulesInstance.managersRemove([accountOne], {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.managersRemove([accountOne], {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::managersRemove');
-        tmpBool = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
         assert.equal(tmpBool, false, 'could not remove manager');
         
         
         // remove from list if none exist before
-        tmpBool = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountTwo, {from: accountTen});
-        await this.TransferRulesInstance.managersRemove([accountTwo], {from: accountTen});
-        tmpBool2 = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountTwo, {from: accountTen});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountTwo, {from: accountTen});
+        await objThis.TransferRulesInstance.managersRemove([accountTwo], {from: accountTen});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountTwo, {from: accountTen});
         assert.equal(tmpBool, tmpBool2, 'removing manager from list if none exist before went wrong');
         
         // add to list if already exist
-        await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
-        tmpBool = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
-        await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
-        tmpBool2 = await this.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelistedMock(managersGroupName, accountOne, {from: accountTen});
         assert.equal(tmpBool, tmpBool2, 'adding manager list if already exist went wrong');
         
     });
  
-    
     it('managers can add/remove person to whitelist', async () => {
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
         
         await truffleAssert.reverts(
-            this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne}), 
+            objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne}), 
             "Sender is not in whitelist"
         );
         
         //owner can't add into whitelist if he will not add himself to managers list
         await truffleAssert.reverts(
-            this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountTen}), 
+            objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountTen}), 
             "Sender is not in whitelist"
         );
         
-        await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
         
-        tmpBool = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
-        trTmp = await this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::whitelistAdd');
-        tmpBool2 = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
         assert.equal(((tmpBool != tmpBool2) && tmpBool2 == true), true, 'could add person to whitelist');
         
-        tmpBool = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
-        trTmp = await this.TransferRulesInstance.whitelistRemove([accountTwo], {from: accountOne});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.whitelistRemove([accountTwo], {from: accountOne});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::whitelistRemove');
-        tmpBool2 = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
         assert.equal(((tmpBool != tmpBool2) && tmpBool2 == false), true, 'could add person to whitelist');
         //---------
         // remove from list if none exist before
-        tmpBool = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
-        await this.TransferRulesInstance.whitelistRemove([accountTwo], {from: accountOne});
-        tmpBool2 = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        await objThis.TransferRulesInstance.whitelistRemove([accountTwo], {from: accountOne});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
         assert.equal(tmpBool, tmpBool2, 'removing person from list if none exist before, went wrong');
         
         // add to list if already exist
-        await this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
-        tmpBool = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
-        await this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
-        tmpBool2 = await this.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        await objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
+        tmpBool = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
+        await objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
+        tmpBool2 = await objThis.TransferRulesInstance.isWhitelisted(accountTwo, {from: accountTen});
         assert.equal(tmpBool, tmpBool2, 'adding person to whitelist if already exist, went wrong');
         
     });
-   
+  
     it('should no restrictions after deploy', async () => {
-    
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-		await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
-        
+        let objThis = this;
+
         // _updateRestrictionsAndRules     
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(zeroAddr, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(zeroAddr, {from: accountTen});
         
         // create managers
-        await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
-        await this.TransferRulesInstance.managersAdd([accountTwo], {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountTwo], {from: accountTen});
         
         // create whitelist persons
-        await this.TransferRulesInstance.whitelistAdd([accountThree], {from: accountOne});
-        await this.TransferRulesInstance.whitelistAdd([accountFourth], {from: accountTwo});
+        await objThis.TransferRulesInstance.whitelistAdd([accountThree], {from: accountOne});
+        await objThis.TransferRulesInstance.whitelistAdd([accountFourth], {from: accountTwo});
         
         
         let arr = [accountOne,accountTwo,accountThree,accountFourth];
         // mint to all accounts 1000 ITR
         // and to itself(owner) too
         for(var i=0; i<arr.length; i++) {
-            await TradedTokenContractMockInstance.mint(arr[i], BigNumber(1000*1e18), {from: accountTen});
+            await objThis.TradedTokenContractMockInstance.mint(arr[i], BigNumber(1000*1e18), {from: accountTen});
             // check Balance
-            tmpBalance = await TradedTokenContractMockInstance.balanceOf(arr[i]);
+            tmpBalance = await objThis.TradedTokenContractMockInstance.balanceOf(arr[i]);
             assert.equal(
                 (BigNumber(1000*1e18)).toString(),
                 (BigNumber(tmpBalance)).toString(),
@@ -312,10 +292,8 @@ contract('TransferRules', (accounts) => {
             )
         }
         
-        
-        
-        
         // try to send 10ITR and send back 40ITR for each account
+        // make a not that taxed does not applied for regular transfer (not unswappair, not address(this))
         tmpCounter = 0;
         for(var i=0; i<arr.length; i++) {
             for(var j=0; j<arr.length; j++) {
@@ -323,8 +301,8 @@ contract('TransferRules', (accounts) => {
                 if (arr[i] != arr[j]) {
                     tmpCounter++;
 
-                    await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, arr[i], arr[j], BigNumber(10*1e18), "Iteration#"+tmpCounter+" (sendTo)");
-                    await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, arr[j], arr[i], BigNumber(40*1e18), "Iteration#"+tmpCounter+" (sendBack)");
+                    await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, arr[i], arr[j], BigNumber(10*1e18), "Iteration#"+tmpCounter+" (sendTo)");
+                    await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, arr[j], arr[i], BigNumber(40*1e18), "Iteration#"+tmpCounter+" (sendBack)");
                 }
             }
         }
@@ -332,80 +310,76 @@ contract('TransferRules', (accounts) => {
     });
 
     it('automaticLockup should call only by owner', async () => {
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
         
         await truffleAssert.reverts(
-            this.TransferRulesInstance.automaticLockupAdd(accountOne, 5, {from: accountFive}), 
+            objThis.TransferRulesInstance.automaticLockupAdd(accountOne, 5, {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         await truffleAssert.reverts(
-            this.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountFive}), 
+            objThis.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         
-        trTmp = await this.TransferRulesInstance.automaticLockupAdd(accountOne, 5, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.automaticLockupAdd(accountOne, 5, {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::automaticLockupAdd');
-        trTmp = await this.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::automaticLockupRemove');
     });
     
     it('minimums should call only by owner', async () => {
+        let objThis = this;
+        
         let latestBlockInfo = await web3.eth.getBlock("latest");
         
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
-        
         await truffleAssert.reverts(
-            this.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountFive}), 
+            objThis.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         await truffleAssert.reverts(
-            this.TransferRulesInstance.minimumsClear(accountOne, {from: accountFive}), 
+            objThis.TransferRulesInstance.minimumsClear(accountOne, {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         
-        trTmp = await this.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::minimumsAdd');
-        trTmp = await this.TransferRulesInstance.minimumsClear(accountOne, {from: accountTen});
+        trTmp = await objThis.TransferRulesInstance.minimumsClear(accountOne, {from: accountTen});
         helperCostEth.transactionPush(trTmp, 'TransferRulesInstance::minimumsClear');
     });
 
     it('testing automaticLockup', async () => {
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-		await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
+        
         
         // _updateRestrictionsAndRules     
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(objThis.TransferRulesInstance.address, {from: accountTen});
         
         //mint accountOne 1000ITR
-        await TradedTokenContractMockInstance.mint(accountOne, BigNumber(1500*1e18), {from: accountTen});
+        await objThis.TradedTokenContractMockInstance.mint(accountOne, BigNumber(1500*1e18), {from: accountTen});
         
         // be sure that accountOne can send to someone without lockup limit
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountOne, accountTwo, BigNumber(500*1e18), "Iteration#1");
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountTwo, accountThree, BigNumber(500*1e18), "Iteration#2");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountOne, accountTwo, BigNumber(500*1e18), "Iteration#1");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountTwo, accountThree, BigNumber(500*1e18), "Iteration#2");
         
         // setup automatic lockup for accountOne for 1 day
-        await this.TransferRulesInstance.automaticLockupAdd(accountOne, 1, {from: accountTen});
+        await objThis.TransferRulesInstance.automaticLockupAdd(accountOne, 1, {from: accountTen});
         // check lockup exist
-        tmp = await this.TransferRulesInstance.getLockup(accountOne, {from: accountTen});
+        tmp = await objThis.TransferRulesInstance.getLockup(accountOne, {from: accountTen});
         assert.equal(tmp[0].toString(),(BigNumber(1).times(BigNumber(86400))).toString(), 'duration lockup was set wrong');
         assert.equal(tmp[1],true, 'duration lockup was set wrong');
         
        
         // send to accountFourth
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(500*1e18), "Iteration#3");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(500*1e18), "Iteration#3");
         // try to send 500 ITR tokens from accountFourth to accountFive
         // expecting that tokens will be lock for accountFourth for 1 day
 
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountFive, BigNumber(500*1e18), {from: accountFourth}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountFive, BigNumber(500*1e18), {from: accountFourth}), 
             "Transfer not authorized"
         );
         
-        tmpBool = await this.TransferRulesInstance.authorize(accountFourth, accountFive, BigNumber(500*1e18), {from: accountFourth});
+        tmpBool = await objThis.TransferRulesInstance.authorize(accountFourth, accountFive, BigNumber(500*1e18), {from: accountFourth});
         assert.equal(tmpBool, false, 'emsg `Transfer not authorized` does not emit');
         
       
@@ -414,52 +388,49 @@ contract('TransferRules', (accounts) => {
 
         
         // and try again
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountFourth, accountFive, BigNumber(500*1e18), "Iteration#4");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountFourth, accountFive, BigNumber(500*1e18), "Iteration#4");
         
         
         ///// 
         // remove automaticLockup from accountOne
-        await this.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountTen});
+        await objThis.TransferRulesInstance.automaticLockupRemove(accountOne, {from: accountTen});
         // send to accountFourth another 500 ITR
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(500*1e18), "Iteration#5");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(500*1e18), "Iteration#5");
         // expecting that the tokens doesnot locked up and transfered w/out reverts
-        await TradedTokenContractMockInstance.transfer(accountFive, BigNumber(500*1e18), {from: accountFourth});
+        await objThis.TradedTokenContractMockInstance.transfer(accountFive, BigNumber(500*1e18), {from: accountFourth});
         
     });
  
     it('whitelistReduce should reduce locked time for whitelist persons', async () => {
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-		await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+        let objThis = this;
         
         // _updateRestrictionsAndRules     
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(objThis.TransferRulesInstance.address, {from: accountTen});
         
         // owner adding manager 
-        await this.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
+        await objThis.TransferRulesInstance.managersAdd([accountOne], {from: accountTen});
         // manager adding person into whitelist
-        await this.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
+        await objThis.TransferRulesInstance.whitelistAdd([accountTwo], {from: accountOne});
         
         // setup 4 days locked up for manager
-        await this.TransferRulesInstance.automaticLockupAdd(accountOne, 4, {from: accountTen});
+        await objThis.TransferRulesInstance.automaticLockupAdd(accountOne, 4, {from: accountTen});
         // mint 1500 ITR to manager
-        await TradedTokenContractMockInstance.mint(accountOne, BigNumber(1500*1e18), {from: accountTen});
+        await objThis.TradedTokenContractMockInstance.mint(accountOne, BigNumber(1500*1e18), {from: accountTen});
         // setup whitelistReduce value into 1 day
-        await this.TransferRulesInstance.whitelistReduce(1, {from: accountTen});
+        await objThis.TransferRulesInstance.whitelistReduce(1, {from: accountTen});
         
         // transfer 500ITR to whitelist person
-        await TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne})
+        await objThis.TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne})
         // transfer 500ITR to none-whitelist person
-        await TradedTokenContractMockInstance.transfer(accountThree, BigNumber(500*1e18), {from: accountOne})
+        await objThis.TradedTokenContractMockInstance.transfer(accountThree, BigNumber(500*1e18), {from: accountOne})
 
         // revert all: none-whitelist and whitelist person
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountTwo}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountTwo}), 
             "Transfer not authorized"
         );
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree}), 
             "Transfer not authorized"
         );
         
@@ -467,98 +438,91 @@ contract('TransferRules', (accounts) => {
         await helper.advanceTimeAndBlock(1*duration1Day);
         
         // revert for none-whitelist person only
-        await TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountTwo});
+        await objThis.TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountTwo});
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree}), 
             "Transfer not authorized"
         );
         
         // pass 3 days
         await helper.advanceTimeAndBlock(3*duration1Day);
         // in total passed 4 days  so tokens will be available for none-whitelist person
-        await TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree});
+        await objThis.TradedTokenContractMockInstance.transfer(accountFourth, BigNumber(500*1e18), {from: accountThree});
         
-        t = await this.TransferRulesInstance.minimumsView(accountFourth, {from: accountFourth});
+        t = await objThis.TransferRulesInstance.minimumsView(accountFourth, {from: accountFourth});
         assert.equal(t[0].toString(), BigNumber(0).toString(), ' minimums are not equal zero for accountFourth');
         assert.equal(t[1].toString(), BigNumber(0).toString(), ' minimums(gradual) are not equal zero for accountFourth');
         
-        t = await TradedTokenContractMockInstance.balanceOf(accountFourth, {from: accountFourth});
+        t = await objThis.TradedTokenContractMockInstance.balanceOf(accountFourth, {from: accountFourth});
         assert.equal(BigNumber(t).toString(), BigNumber(1000*1e18).toString(), 'Balance for accountFourth are wrong');
             
     });
   
     it('testing minimums', async () => {
+
+        let objThis = this;
         let latestBlockInfo;
         
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-		await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
-        
         // _updateRestrictionsAndRules     
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
         
         //------- #1
         //mint accountOne 500ITR
-        await TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
+        await objThis.TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
         
         latestBlockInfo = await web3.eth.getBlock("latest");
         
-        await this.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
+        await objThis.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
         
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne}), 
             "Transfer not authorized"
         );
         
         // pass 1 days
         await helper.advanceTimeAndBlock(1*duration1Day);
         // try again
-        await TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne});
+        await objThis.TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne});
     
         //------- #2
         //mint accountOne 500ITR
-        await TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
+        await objThis.TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
         
         latestBlockInfo = await web3.eth.getBlock("latest");
         
-        await this.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
+        await objThis.TransferRulesInstance.minimumsAdd(accountOne, BigNumber(500*1e18), latestBlockInfo.timestamp + duration1Day, true, {from: accountTen});
         
         await truffleAssert.reverts(
-            TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne}), 
+            objThis.TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne}), 
             "Transfer not authorized"
         );
         // remove minimums
-        await this.TransferRulesInstance.minimumsClear(accountOne, {from: accountTen});
+        await objThis.TransferRulesInstance.minimumsClear(accountOne, {from: accountTen});
         
         // try again (so without passing 1 day)
-        await TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne});
+        await objThis.TradedTokenContractMockInstance.transfer(accountTwo, BigNumber(500*1e18), {from: accountOne});
         
     });
-    
 
     it('test dailyRate', async () => {
-        var TradedTokenContractMockInstance = await TradedTokenContractMock.new({from: accountTen});
-		await TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, {from: accountTen});
-        // var TransferRulesInstance = await TransferRulesMock.new({from: accountTen});
-        // await TransferRulesInstance.init({from: accountTen});
+       let objThis = this;
         
         // _updateRestrictionsAndRules     
-        await TradedTokenContractMockInstance._updateRestrictionsAndRules(this.TransferRulesInstance.address, {from: accountTen});
+        await objThis.TradedTokenContractMockInstance._updateRestrictionsAndRules(objThis.TransferRulesInstance.address, {from: accountTen});
         
         //------- #1
         //mint accountOne 500ITR
-        await TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
+        await objThis.TradedTokenContractMockInstance.mint(accountOne, BigNumber(500*1e18), {from: accountTen});
         
         
         await truffleAssert.reverts(
-            this.TransferRulesInstance.dailyRate(BigNumber(500*1e18), 1, {from: accountFive}), 
+            objThis.TransferRulesInstance.dailyRate(BigNumber(500*1e18), 1, {from: accountFive}), 
             "Ownable: caller is not the owner"
         );
         
-        await this.TransferRulesInstance.dailyRate(BigNumber(100*1e18), 1, {from: accountTen});
+        await objThis.TransferRulesInstance.dailyRate(BigNumber(100*1e18), 1, {from: accountTen});
         
-        await sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(200*1e18), "Iteration#1");
+        await sendAndCheckCorrectBalance(objThis.TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(200*1e18), "Iteration#1");
         
         // await truffleAssert.reverts(
         //     sendAndCheckCorrectBalance(TradedTokenContractMockInstance, accountOne, accountFourth, BigNumber(200*1e18), "Iteration#1"), 
@@ -585,141 +549,81 @@ contract('TransferRules', (accounts) => {
         // );
 
     });
-*/
 
-/*
-it('test22', async () => {
+    it('simulation', async () => {
         
-        var T222 = await TradedTokenContractMock.new({from: accountTen});
-	    T222.initialize(name, symbol, defaultOperators, ownersAddrs, {from: accountTen});
-	   // this.TradedTokenContractMockInstance.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
-	   // this.TradedTokenContractMockInstance.setInitialPrice(100000, {from: accountTen});
-
-	    var uniswapV2RouterAddr = await T222.uniswapV2Router();
-	    var uniswapV2PairAddr = await T222.uniswapV2Pair();
-	    
-	    var uniswapV2RouterInstance = await uniswapV2Router.at(uniswapV2RouterAddr);
-	    var uniswapV2PairInstance = await uniswapPair.at(uniswapV2PairAddr);
-
-console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
-console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
-console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
-
-T222.donateETH({from: accountTen, value: '0x'+BigNumber(15e18).toString(16)});
-
-console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
-console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
-console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
-
-T222.setInitialPrice(100000, {from: accountTen});
-
-console.log('accountTen(CAKE)  =', (await uniswapV2PairInstance.balanceOf(accountTen)).toString());
-console.log('Pair(CAKE)        =', (await uniswapV2PairInstance.balanceOf(uniswapV2PairInstance.address)).toString());
-console.log('ITRContract(CAKE) =', (await uniswapV2PairInstance.balanceOf(T222.address)).toString());
-	    
-});
-*/
-/**/    
-    it('test', async () => {
         var objThis = this;
-	   // // send ETH to Contract
-    //     await web3.eth.sendTransaction({
-    //         from:accountOne,
-    //         to: token0, 
-    //         value: '0x'+BigNumber(40e18).toString(16)
-            
-    //     });
-	    
-	    await statsView(this);
-	    
-	    
-// 	   tmp = await uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(12e18).toString(16), pathTokenETH);
-// 	   console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
-	   
-// 	  // 601202 404809619238476954
-	  
-// 	  1202501009700015
-// 	   tmp = await uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(10e18).toString(16), pathTokenETH);
-// 	   console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
-	    
-	   // tmp = await this.uniswapV2RouterInstance.getAmountsIn('0x'+BigNumber(1e18).toString(16), this.pathTokenETH);
-	   // console.log('amountRequired=',tmp[0].toString(),tmp[1].toString());
-	    
-	   
-        //let accountsArr = [accountOne, accountTwo, accountThree, accountFourth, accountFive, accountSix, accountSeven, accountEight];
-        let accountsArr = [accountOne, accountTwo];
-    
-	    for(var i=0 ; i<9; i++) {
-	        for(var j=0 ; j<accountsArr.length; j++) {
-	            
-        	    await this.uniswapV2RouterInstance.swapExactETHForTokens(
-        	        '0x'+BigNumber(10e18).toString(16),
-        	        objThis.pathETHToken,
-        	        accountsArr[j], 
-        	        ts2050y, {from: accountsArr[j], value:'0x'+BigNumber(10e18).toString(16)}
-                );
-	        }
-            
-    	    await statsView(objThis);
-	    }
-	    
-	    let balanceAccountTwo = await this.TradedTokenContractMockInstance.balanceOf(accountTwo);
-	    await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, balanceAccountTwo, {from: accountTwo});
-	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
-            balanceAccountTwo,
-            0, // accept any amount of ETH 
-            objThis.pathTokenETH,
-            accountTwo,
-            ts2050y, {from: accountTwo}
-        );
+
         await statsView(objThis);
-        
-        let balanceAccountOne = await this.TradedTokenContractMockInstance.balanceOf(accountOne);
-	    await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, balanceAccountOne, {from: accountOne});
-	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
-            balanceAccountOne,
-            0, // accept any amount of ETH 
-            objThis.pathTokenETH,
-            accountOne,
-            ts2050y, {from: accountOne}
-        );
-        await statsView(objThis);
-
-
-	   // await this.TradedTokenContractMockInstance.getPastEvents('Transfer', {
-    //         filter: {addr: accountTwo}, 
-    //         fromBlock: 0,
-    //         toBlock: 'latest'
-    //     }, function(error, events){ })
-    //     .then(function(events){
-    //       //  console.log(events[0]);
-    //     });
-      
-
 	    
-// 	    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-//   external
-//   returns (uint[] memory amounts);
+        let accountsArr = [accountOne, accountTwo, accountThree, accountFourth, accountFive, accountSix, accountSeven, accountEight];
+        //let accountsArr = [accountOne, accountTwo];
   
-	   //  uniswapV2Router.addLiquidityETH{value: ethAmount}(
-    //         address(this),
-    //         tokenAmount,
-    //         0, // slippage is unavoidable
-    //         0, // slippage is unavoidable
-    //         owner(),
-    //         block.timestamp
-    //     );
+        let iterationCounts = 100,
+            i = 0,
+            accountRandomIndex,
+            typeTodo,
+            totalBalance,
+            amount2Send
+            ;
         
-	    
+        while (i < iterationCounts) {
+            i++;
+            
+            try {
+                accountRandomIndex = Math.floor(Math.random() * accountsArr.length);
+                typeTodo = Math.floor(Math.random() * 2);
+                
+                if (typeTodo == 0) {
+                    // swapExactETHForTokens
+                    //totalBalance = await web3.eth.getBalance(accountOne);
+                    amount2Send = Math.floor(Math.random() * 10 ** 19);
+
+                    await this.uniswapV2RouterInstance.swapExactETHForTokens(
+            	        '0x'+BigNumber(amount2Send).toString(16),
+            	        objThis.pathETHToken,
+            	        accountsArr[accountRandomIndex], 
+            	        ts2050y, {from: accountsArr[accountRandomIndex], value:'0x'+BigNumber(amount2Send).toString(16)}
+                    );
+
+                } else {
+                    // swap back
+                    totalBalance = await this.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex]);
+                    if (totalBalance >0) {
+                        amount2Send = Math.floor(Math.random() *  10 ** (totalBalance.toString().length-1));
+
+        	            await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, '0x'+BigNumber(amount2Send).toString(16), {from: accountsArr[accountRandomIndex]});
+        	            
+                	    await this.uniswapV2RouterInstance.swapExactTokensForETH(
+                            '0x'+BigNumber(amount2Send).toString(16),
+                            0, // accept any amount of ETH 
+                            objThis.pathTokenETH,
+                            accountsArr[accountRandomIndex],
+                            ts2050y, {from: accountsArr[accountRandomIndex]}
+                        );
+                    } else {
+                        //console.log("totalBalance==0");    
+                        continue;
+                    }
+
+                }
+                await statsView(objThis);     
+            }
+            catch (e) {
+               // console.log(e);
+               console.log('catch error');
+            }
+        }
+        await statsView(objThis);     
+  
+  
+
     }); 
-  /* */  
-/*
+
+/* 
+    //if need to view transaction cost consuming while tests
     it('summary transactions cost', async () => {
-        
-        //
         console.table(await helperCostEth.getTransactionsCostEth(90, false));
-        //console.table(await helperCostEth.getTransactionsCostEth(90, true));
-        
     });
 
   */

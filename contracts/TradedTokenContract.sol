@@ -9,6 +9,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
+import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 
 import "./interfaces/ITransferRules.sol";
 import "./IntercoinTrait.sol";
@@ -17,8 +18,11 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820Implement
 
 import "./interfaces/ITradedTokenContract.sol";
 
+
 contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable {
     using SafeMathUpgradeable for uint256;
+
+    using FixedPoint for *;
 
     address public uniswapRouter;
     address public uniswapRouterFactory;
@@ -39,13 +43,10 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     ITransferRules public _rules;
     
     uint256 public liquidityPercent;
-  //  uint256 public excessTokenSellSlippage;
-    //uint256 public sellPriceIncreaseMin;
-    //uint256 public sellEventsTotal;
-    uint256 public currentPrice;
-    
-    // stored latestCumulative price of WETH
-    uint256 private lastSellPrice;
+
+    // stored Sell Price in binary fixed point 112*112
+    //uint224 private lastSellPrice_Q112;
+    FixedPoint.uq112x112 private lastMaxSellPrice;
     
     
     bool initialPriceSet;
@@ -61,15 +62,16 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         uint256 timestamp;
         bool exists;
     }
+    struct BulkStruct {
+        address recipient;
+        uint256 amount;
+    }
     mapping (address => recentStruct) recentTransfer;
     
     // Taxes
     TransferTax transferTax;
     ProgressiveTax progressiveTax;
     SellTax sell;
-    
-    
-    
     
     event RulesUpdated(address rules);
 
@@ -83,7 +85,6 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     
     event SentToInviter(uint256 amount);
     
-
     modifier lockTheSwap {
         inSwapAndLiquify = true;
         _;
@@ -148,9 +149,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
 
         // set the rest of the contract variables
         uniswapV2Router = _uniswapV2Router;
-        
-        currentPrice = 0;
-        lastSellPrice = 0;
+    
+        lastMaxSellPrice._x = 0;
     
         initialPriceSet = false;
     
@@ -214,13 +214,16 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
      * @param inviter person who invited
      * 
      */
-    function setInvitedBy(address invited, address inviter) internal {
+    function setInvitedBy(
+        address invited, 
+        address inviter
+    ) 
+        internal 
+    {
         if (invitedBy[invited] == address(0)) {
             invitedBy[invited] = inviter;
         }
     }
-    
-    
     
     /**
      * return addresses for uniswap/pancake router and factory
@@ -262,7 +265,11 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         }
     }
     
-    
+    /**
+     * added liquidity 
+     * @param ethAmount amount in ETH
+     * @param tokenAmount amount in tokens
+     */
     function addLiquidity(
         uint256 ethAmount,
         uint256 tokenAmount
@@ -309,7 +316,15 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         returns(uint256 taxLiquidity, uint256 taxBurn, uint256 inviterBonus) 
     {
         
-        if (transferTax.total == 0) {
+        if (
+            transferTax.total == 0 ||
+            (
+                _msgSender() != uniswapV2Pair &&
+                _msgSender() != address(this) &&
+                recipient != uniswapV2Pair &&
+                recipient != address(this)
+            )
+        ) {
             taxLiquidity = 0;
             taxBurn = 0;
             inviterBonus = 0;
@@ -358,7 +373,10 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         }
       
     }
-
+    
+    /**
+     * ERC777-transfer overroded
+     */
     function transfer(
         address recipient, 
         uint256 amount
@@ -393,24 +411,14 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         amount = amount.sub(totalTaxes);
         
         //### then make swap (taxLiquidityAmount)
-        
-        uint256 amountLiquify;// = amount.mul(liquidityPercent).div(100);
 
-        // if(amountLiquify >= _maxTxAmount)
-        // {
-        //     amountLiquify = _maxTxAmount;
-        // }
-        // bool overMinTokenBalance = amountLiquify >= numTokensSellToAddToLiquidity;
         if (
-           // overMinTokenBalance &&
+            taxLiquidityAmount > 0 &&
             !inSwapAndLiquify &&
             _msgSender() != uniswapV2Pair &&
             _msgSender() != address(this) &&
             swapAndLiquifyEnabled
         ) {
-            // amountLiquify = amount.mul(liquidityPercent).div(100);
-            // amount = amount.sub(amountLiquify);
-            //add liquidity
             swapAndLiquify(taxLiquidityAmount);
         }
         
@@ -424,29 +432,36 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
             super.transfer(invitedBy[recipient], inviterBonusAmount);
         }
             
-        //### then common ERC20-transfer
+        //### then common ERC777-transfer
         success = super.transfer(recipient, amount);
         
         //### then setup invitedBy
          setInvitedBy(recipient, _msgSender());
          
         //### then if price exceed -  calculate settTokenAmount, swap to eth and distributed through owners by percents
-        // point 4
         if (recipient == uniswapV2Pair) {
-            uint256 currentSellPrice;
-            if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
-                currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price1CumulativeLast();
-            } else {
-                currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
-            }
+            FixedPoint.uq112x112 memory currentSellPrice;
+            uint112 reserve0;
+            uint112 reserve1;
+            (reserve0, reserve1, ) = IUniswapV2Pair(uniswapV2Pair).getReserves();
             
+            if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
+                currentSellPrice = FixedPoint.encode(uint112(reserve0)).div(reserve1);
+            } else {
+                currentSellPrice = FixedPoint.encode(uint112(reserve1)).div(reserve0);
+                //currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
+            }
+            if (lastMaxSellPrice._x == 0) {
+                
+            }
             // priceExcess = latestPrice - latestMaxPrice * (1 + sell.afterPriceIncrease). 
             // And if priceExcess > 0 then you are supposed to sell 
-            uint256 priceInreased = lastSellPrice.mul(sell.priceIncreaseMin.add(100)).div(100);
-            
-            if (priceInreased > currentSellPrice) {
-                uint256 priceExcess = priceInreased.sub(currentSellPrice);
-                uint256 sellTokenAmount = totalSupply().mul((priceExcess).div(sell.priceIncreaseMin)).div(sell.eventsTotal);
+            FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sell.priceIncreaseMin.add(100));
+            FixedPoint.uq144x112 memory priceExcess;
+            if (currentSellPrice._x > priceInreased._x) {
+                priceExcess._x = (currentSellPrice._x)-(priceInreased._x);
+                
+                uint256 sellTokenAmount = ((((priceExcess._x).div(sell.priceIncreaseMin)).mul(totalSupply()))>>112).div(sell.eventsTotal);
 
                 // generate the uniswap pair path of token -> weth
                 address[] memory path = new address[](2);
@@ -467,7 +482,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
                     );
                           
                     uint256 amountToken0 = amounts[0].mul(100).div(transferTax.toLiquidity);
-                    uint256 amountToken1 = currentSellPrice.mul(amountToken0);
+                    uint256 amountToken1 = FixedPoint.decode144(currentSellPrice.mul(amountToken0));
+                    
                     addLiquidity(amountToken0, amountToken1);
                     
                     uint256 eth2send = amounts[0].sub(amountToken0);
@@ -480,18 +496,20 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
                         require(success2 == true, 'Transfer ether was failed'); 
                     }
 
-                    lastSellPrice = currentSellPrice;
+                    lastMaxSellPrice = currentSellPrice;
                 
                 }
                 
                 
             }
         }
-        /**/
-        
+
         return success;
     }
     
+    /**
+     * @param amountLiquify amountLiquify
+     */
     function swapAndLiquify(uint256 amountLiquify) private lockTheSwap {
         // split the contract balance into halves
         uint256 half = amountLiquify.div(2);
@@ -512,11 +530,12 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         // add liquidity to uniswap
         addLiquidity(otherHalf, newBalance);
         
-        
-         
         emit SwapAndLiquify(half, newBalance, otherHalf);
     }
     
+    /**
+     * @param tokenAmount token's amount
+     */
     function swapTokensForEth(uint256 tokenAmount) private {
         // generate the uniswap pair path of token -> weth
         address[] memory path = new address[](2);
@@ -535,6 +554,11 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         );
     }
     
+    /**
+     * @dev Hook that is called before any token transfer. This includes
+     * calls to {send}, {transfer}, {operatorSend}, minting and burning.
+     * 
+     */
     function _beforeTokenTransfer(
         address operator, 
         address from, 
@@ -552,8 +576,12 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         }
     }
     
-    
-     function _updateRestrictionsAndRules(address rules) public returns (bool) {
+    /**
+     * set restriction for every transfer
+     * @param rules address of TransferRules contract
+     * @return bool
+     */
+    function _updateRestrictionsAndRules(address rules) public returns (bool) {
 
         _rules = ITransferRules(rules);
 
@@ -565,9 +593,13 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         return true;
     }
     
-    function bulkTransfer(address[] memory _recipients, uint256 _amount, bytes memory _data) public {
-        for (uint256 i = 0; i < _recipients.length; i++) {
-            operatorSend(msg.sender, _recipients[i], _amount, _data, "");
+    /**
+     * @param _bulkStruct array of tuples [recipient, address]
+     * @param _data bytes to operatorSend
+     */
+    function bulkTransfer(BulkStruct[] memory _bulkStruct, bytes memory _data) public {
+        for (uint256 i = 0; i < _bulkStruct.length; i++) {
+            operatorSend(msg.sender, _bulkStruct[i].recipient, _bulkStruct[i].amount, _data, "");
         }
     }
   
