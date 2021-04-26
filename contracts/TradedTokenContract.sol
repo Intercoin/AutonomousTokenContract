@@ -17,9 +17,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgrade
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820ImplementerUpgradeable.sol";
 
 import "./interfaces/ITradedTokenContract.sol";
+import "./libs/ReentrancyGuard.sol";
 
 
-contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable {
+contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable, ReentrancyGuard {
     using SafeMathUpgradeable for uint256;
 
     using FixedPoint for *;
@@ -115,7 +116,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         // do stuff
         //emit DoneStuff(operator, from, to, amount, userData, operatorData);
     }
-    /**/
+    
     
     function initialize(
         string memory name, 
@@ -383,7 +384,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     ) 
         public 
         virtual 
-        override 
+        override
+        nonReentrant
         returns (bool) 
     {
         bool success;
