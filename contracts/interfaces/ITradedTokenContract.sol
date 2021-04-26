@@ -22,16 +22,18 @@ interface ITradedTokenContract {
         address addr;
         uint256 percent;
     }
-    /*
-    struct params {
-        SellStructs Sell;
+    
+    struct BulkStruct {
+        address recipient;
+        uint256 amount;
     }
-    */
+    
     //function setInitialPrice(uint256 price) external;
     function initialize(
         string memory name, 
         string memory symbol, 
         address[] memory defaultOperators, 
+        BulkStruct[] memory _predefinedBalances,
         SellTax memory _sellTax,
         TransferTax memory _transfer,
         ProgressiveTax memory _progressive,
