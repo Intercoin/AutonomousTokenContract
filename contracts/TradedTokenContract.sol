@@ -50,7 +50,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     FixedPoint.uq112x112 private lastMaxSellPrice;
     
     
-    bool initialPriceSet;
+    bool initialPriceAlreadySet;
+    
     // predefine owners addresses
     OwnersList[] ownersList;
     
@@ -62,10 +63,6 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         uint256 balance;
         uint256 timestamp;
         bool exists;
-    }
-    struct BulkStruct {
-        address recipient;
-        uint256 amount;
     }
     mapping (address => recentStruct) recentTransfer;
     
@@ -90,6 +87,12 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         inSwapAndLiquify = true;
         _;
         inSwapAndLiquify = false;
+    }
+    
+    modifier initialPriceSet() {
+        require(initialPriceAlreadySet == false, "Initial price has already set");
+        initialPriceAlreadySet = true;
+        _;
     }
     
     function donateETH() public payable {
@@ -122,6 +125,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         string memory name, 
         string memory symbol, 
         address[] memory defaultOperators,
+        BulkStruct[] memory _predefinedBalances,
         SellTax memory _sellTax,
         TransferTax memory _transfer,
         ProgressiveTax memory _progressive,
@@ -140,7 +144,15 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         
         _ERC1820_REGISTRY.setInterfaceImplementer(address(this), keccak256("ERC777TokensRecipient"), address(this));
         
-        _mint(address(this), 1_000_000_000 * 10 ** 18, "", "");
+        uint256 totalSupply = 1_000_000_000 * 10 ** 18;
+        uint256 tokensLeft = totalSupply;
+        
+        for (uint256 i = 0; i < _predefinedBalances.length; i++) {
+            _mint(_predefinedBalances[i].recipient, _predefinedBalances[i].amount, "", "");
+            tokensLeft= tokensLeft.sub(_predefinedBalances[i].amount);
+            
+        }
+        _mint(address(this), tokensLeft, "", "");
         
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(uniswapRouter);
         
@@ -152,8 +164,6 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         uniswapV2Router = _uniswapV2Router;
     
         lastMaxSellPrice._x = 0;
-    
-        initialPriceSet = false;
     
         sell.eventsTotal = 100; // times to divide
         sell.priceIncreaseMin = 10; // 10%
@@ -180,11 +190,15 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     
     /**
      * @param price initial price 1 eth token mul by 1e9
+     * called only once
      */
     function setInitialPrice(
         uint256 price
-    ) public onlyOwner {
-        require(initialPriceSet == false, 'Initial price has already set');
+    ) 
+        public 
+        onlyOwner 
+        initialPriceSet()
+    {
         uint256 ethAmount = address(this).balance;
         require(ethAmount != 0, 'balance is empty');
         //eth/price*1e9/1e18/1e9
@@ -194,8 +208,6 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         //irb(main):114:0> 0.1e18*1e9/1e6 / 1e9
         uint256 tokenAmount = ethAmount.mul(1e9).div(price);
         require(tokenAmount <= balanceOf(address(this)), 'balance is not enough');
-        
-        initialPriceSet == true;
         
         _approve(address(this), address(uniswapV2Router), tokenAmount);
         uniswapV2Router.addLiquidityETH{value: ethAmount}(
@@ -208,7 +220,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         );
         
     }
-    
+   
     /**
      * fill invitedBy mapping
      * @param invited person been invited
