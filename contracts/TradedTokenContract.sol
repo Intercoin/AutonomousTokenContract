@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/token/ERC777/ERC777Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820ImplementerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
@@ -13,14 +16,12 @@ import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 
 import "./interfaces/ITransferRules.sol";
 import "./IntercoinTrait.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC1820ImplementerUpgradeable.sol";
+
 
 import "./interfaces/ITradedTokenContract.sol";
-import "./libs/ReentrancyGuard.sol";
 
 
-contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable, ReentrancyGuard {
+contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMathUpgradeable for uint256;
 
     using FixedPoint for *;
@@ -138,6 +139,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     {
         (uniswapRouter, uniswapRouterFactory) = networkSettings();
 
+        __ReentrancyGuard_init();
         __Ownable_init();
         __ERC777_init(name, symbol, defaultOperators);
         __ERC1820Implementer_init();

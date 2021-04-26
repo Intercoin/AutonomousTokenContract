@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/ITradedTokenContract.sol";
-import "./libs/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-contract TradedTokenFactory is OwnableUpgradeable, ReentrancyGuard {
+contract TradedTokenFactory is OwnableUpgradeable, ReentrancyGuardUpgradeable {
    
     address contractInstance;
     event Produced(address caller, address addr);

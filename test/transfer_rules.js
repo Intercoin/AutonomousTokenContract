@@ -41,6 +41,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
     const name = 'ITR Token TEST';
     const symbol = 'ITRT';
     const defaultOperators = [];
+    const predefinedBalances = [];
 
     var sellTax = [100, 10, 10];
     var transfer = [0, 10, 0];
@@ -133,7 +134,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
 
         this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({ from: accountTen });
-        this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, sellTax, transfer, progressive, ownersList, { from: accountTen });
+        this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, sellTax, transfer, progressive, ownersList, { from: accountTen });
         this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + BigNumber(15e18).toString(16) });
         this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
 
