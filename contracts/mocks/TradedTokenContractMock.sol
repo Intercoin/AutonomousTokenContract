@@ -17,4 +17,9 @@ contract TradedTokenContractMock is TradedTokenContract {
         _mint(account, amount, userData, operatorData);
     }
         
+    function getLatestPrice() public view returns(uint256 x){
+        x = lastMaxSellPrice._x;
+        
+    }
+    
 }

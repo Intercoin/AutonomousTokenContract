@@ -101,13 +101,13 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
         console.log('Price                          =', (price).toString());
 
         // console.log('getReserves[blockTimestampLast]=', (tmp.blockTimestampLast).toString());
-        /*
-                console.log('=WETH======================');
-                console.log('accountOne(WETH)  =', (await objThis.WETHInstance.balanceOf(accountOne)).toString());
-                console.log('Pair(WETH)        =', (await objThis.WETHInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
-                console.log('ITRContract(WETH) =', (await objThis.WETHInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
-                console.log('=ETH======================');
-                console.log('accountOne(ETH)   =', (await web3.eth.getBalance(accountOne)).toString());	    
+        /**/
+                // console.log('=WETH======================');
+                // console.log('accountOne(WETH)  =', (await objThis.WETHInstance.balanceOf(accountOne)).toString());
+                // console.log('Pair(WETH)        =', (await objThis.WETHInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
+                // console.log('ITRContract(WETH) =', (await objThis.WETHInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
+                // console.log('=ETH======================');
+                // console.log('accountOne(ETH)   =', (await web3.eth.getBalance(accountOne)).toString());	    
                 console.log('Pair(ETH)         =', (await web3.eth.getBalance(objThis.uniswapV2PairInstance.address)).toString());
                 console.log('ITRContract(ETH)  =', (await web3.eth.getBalance(objThis.TradedTokenContractMockInstance.address)).toString());	    
                 console.log('=ITR======================');
@@ -115,10 +115,10 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                 console.log('Pair(ITR)         =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
                 console.log('ITRContract(ITR)  =', (await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
                 console.log('=======================');
-                console.log('accountOne(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountOne)).toString());
-                console.log('Pair(CAKE)        =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
-                console.log('ITRContract(CAKE) =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
-        */
+                // console.log('accountOne(CAKE)  =', (await objThis.uniswapV2PairInstance.balanceOf(accountOne)).toString());
+                // console.log('Pair(CAKE)        =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.uniswapV2PairInstance.address)).toString());
+                // console.log('ITRContract(CAKE) =', (await objThis.uniswapV2PairInstance.balanceOf(objThis.TradedTokenContractMockInstance.address)).toString());
+        /**/
         // console.log('================================');
     }
 
@@ -132,11 +132,11 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
         this.TransferRulesInstance = await TransferRulesMock.new({ from: accountTen });
         await this.TransferRulesInstance.init({ from: accountTen });
 
-
         this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({ from: accountTen });
-        this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, sellTax, transfer, progressive, ownersList, { from: accountTen });
-        this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + BigNumber(15e18).toString(16) });
-        this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
+        await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, sellTax, transfer, progressive, ownersList, { from: accountTen });
+        
+        await this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + BigNumber(15e18).toString(16) });
+        await this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
 
         let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
         let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();
@@ -158,7 +158,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
     });
 
-
+/*
     it('create and initialize', async () => {
         let objThis = this;
 
@@ -550,7 +550,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
         // );
 
     });
-
+*/
     it('simulation', async () => {
 
         var objThis = this;
@@ -559,15 +559,17 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
         let accountsArr = [accountOne, accountTwo, accountThree, accountFourth, accountFive, accountSix, accountSeven, accountEight];
         //let accountsArr = [accountOne, accountTwo];
+        
+        let ITRContractBalanceBefore = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
 
-        let iterationCounts = 100,
+        let iterationCounts = 30,
             i = 0,
             accountRandomIndex,
             typeTodo,
             totalBalance,
             amount2Send
             ;
-
+        
         while (i < iterationCounts) {
             i++;
 
@@ -579,45 +581,64 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                     // swapExactETHForTokens
                     //totalBalance = await web3.eth.getBalance(accountOne);
                     amount2Send = Math.floor(Math.random() * 10 ** 19);
-
+console.log("-------------------------");
+console.log("swapExactETHForTokens");
+console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
                     await this.uniswapV2RouterInstance.swapExactETHForTokens(
                         '0x' + BigNumber(amount2Send).toString(16),
                         objThis.pathETHToken,
                         accountsArr[accountRandomIndex],
                         ts2050y, { from: accountsArr[accountRandomIndex], value: '0x' + BigNumber(amount2Send).toString(16) }
                     );
+console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
 
                 } else {
                     // swap back
                     totalBalance = await this.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex]);
                     if (totalBalance > 0) {
                         amount2Send = Math.floor(Math.random() * 10 ** (totalBalance.toString().length - 1));
+                        if (totalBalance > amount2Send) {
+console.log("-------------------------");
+console.log("swapExactTokensForETH");
+console.log("totalBalance = ", totalBalance.toString());
+console.log("amount2Send  = ", amount2Send.toString());
+console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
 
-                        await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, '0x' + BigNumber(amount2Send).toString(16), { from: accountsArr[accountRandomIndex] });
-
-                        await this.uniswapV2RouterInstance.swapExactTokensForETH(
-                            '0x' + BigNumber(amount2Send).toString(16),
-                            0, // accept any amount of ETH 
-                            objThis.pathTokenETH,
-                            accountsArr[accountRandomIndex],
-                            ts2050y, { from: accountsArr[accountRandomIndex] }
-                        );
+                            await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, '0x' + BigNumber(amount2Send).toString(16), { from: accountsArr[accountRandomIndex] });
+    
+                            await this.uniswapV2RouterInstance.swapExactTokensForETH(
+                                '0x' + BigNumber(amount2Send).toString(16),
+                                0, // accept any amount of ETH 
+                                objThis.pathTokenETH,
+                                accountsArr[accountRandomIndex],
+                                ts2050y, { from: accountsArr[accountRandomIndex] }
+                            );
+//await statsView(objThis);
+console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+console.log('latestPrice=', (await objThis.TradedTokenContractMockInstance.getLatestPrice()).toString());
+                        }
                     } else {
                         //console.log("totalBalance==0");    
                         continue;
                     }
 
+
                 }
-                await statsView(objThis);
+
+                // await statsView(objThis);
             }
             catch (e) {
-                // console.log(e);
+                console.log(e);
                 console.log('catch error');
             }
         }
         await statsView(objThis);
-
-
+        
+        let latestPrice = await objThis.TradedTokenContractMockInstance.getLatestPrice();
+        let ITRContractBalanceAfter = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
+        console.log('latestPrice=', latestPrice.toString());
+        // console.log('ITRContractBalanceBefore=', ITRContractBalanceBefore.toString());
+        // console.log('ITRContractBalanceAfter =', ITRContractBalanceAfter.toString());
 
     });
 
