@@ -27,6 +27,7 @@
 require('dotenv').config();
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
+const secretTestnet = require("./secret.testnet.json");
 
 // ganache-cli  romance trend harsh sniff success ice unfold improve notice recycle quote desk
 module.exports = {
@@ -88,7 +89,7 @@ module.exports = {
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     },
     rinkeby: {
-        provider: () => new HDWalletProvider(process.env.private_key, 'https://rinkeby.infura.io/v3/'+process.env.infura_project_id),
+        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://rinkeby.infura.io/v3/e55e2b6f7b034f50b1b89ca138a9a6e5'),
         network_id: 4,       // Rinkeby's id
         gas: 9000000,        
         //confirmations: 2,    
@@ -141,7 +142,8 @@ module.exports = {
   plugins: ['truffle-plugin-verify'],
   
   api_keys: {
-    etherscan: process.env.etherscan_api_key,
+    // etherscan: process.env.etherscan_api_key,
+    etherscan: secretTestnet.etherscan_api_key,
     bscscan: process.env.bscscan_api_key
   
   },

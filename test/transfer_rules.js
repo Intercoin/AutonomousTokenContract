@@ -581,16 +581,16 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                     // swapExactETHForTokens
                     //totalBalance = await web3.eth.getBalance(accountOne);
                     amount2Send = Math.floor(Math.random() * 10 ** 19);
-console.log("-------------------------");
-console.log("swapExactETHForTokens");
-console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                    console.log("-------------------------");
+                    console.log("swapExactETHForTokens");
+                    console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
                     await this.uniswapV2RouterInstance.swapExactETHForTokens(
                         '0x' + BigNumber(amount2Send).toString(16),
                         objThis.pathETHToken,
                         accountsArr[accountRandomIndex],
                         ts2050y, { from: accountsArr[accountRandomIndex], value: '0x' + BigNumber(amount2Send).toString(16) }
                     );
-console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                    console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
 
                 } else {
                     // swap back
@@ -598,11 +598,11 @@ console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf
                     if (totalBalance > 0) {
                         amount2Send = Math.floor(Math.random() * 10 ** (totalBalance.toString().length - 1));
                         if (totalBalance > amount2Send) {
-console.log("-------------------------");
-console.log("swapExactTokensForETH");
-console.log("totalBalance = ", totalBalance.toString());
-console.log("amount2Send  = ", amount2Send.toString());
-console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                            console.log("-------------------------");
+                            console.log("swapExactTokensForETH");
+                            console.log("totalBalance = ", totalBalance.toString());
+                            console.log("amount2Send  = ", amount2Send.toString());
+                            console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
 
                             await this.TradedTokenContractMockInstance.approve(this.uniswapV2RouterInstance.address, '0x' + BigNumber(amount2Send).toString(16), { from: accountsArr[accountRandomIndex] });
     
@@ -613,9 +613,9 @@ console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceO
                                 accountsArr[accountRandomIndex],
                                 ts2050y, { from: accountsArr[accountRandomIndex] }
                             );
-//await statsView(objThis);
-console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
-console.log('latestPrice=', (await objThis.TradedTokenContractMockInstance.getLatestPrice()).toString());
+                            //await statsView(objThis);
+                            console.log("After = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                            console.log('latestPrice=', (await objThis.TradedTokenContractMockInstance.getLatestPrice()).toString());
                         }
                     } else {
                         //console.log("totalBalance==0");    

@@ -345,7 +345,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     function transferFrom(address holder, address recipient, uint256 amount) public virtual override  returns (bool) {
 
         bool success = super.transferFrom(holder, recipient, amount);
-        if (recipient == uniswapV2Pair && !uniswapV2PairReentrant) {
+        if (holder == uniswapV2Pair && !uniswapV2PairReentrant) {
             
             //### then if price exceed -  calculate sellTokenAmount, swap to eth and distributed through owners by percents
             sellTokenCalculation(recipient);
@@ -386,7 +386,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
                 uint256 sellTokenAmount = (((priceExcess._x).mul(totalSupply()).div(sell.priceIncreaseMin))>>112).div(sell.eventsTotal);
                 
                 if (balanceOf(address(this)) >= sellTokenAmount && sellTokenAmount>0) {
-/*
+
                     // generate the uniswap pair path of token -> weth
                     address[] memory path = new address[](2);
                     path[0] = address(this);
@@ -427,13 +427,14 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
                         bool success2;
                         for (uint256 i = 0 ; i< ownersList.length; i++) {
                             addr1 = payable(ownersList[i].addr); // correct since Solidity >= 0.6.0
-                            success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
+                            (success2, ) = addr1.call{value: eth2send.mul(100).div(ownersList[i].percent)}("");
+                            // success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
                             require(success2 == true, 'Transfer ether was failed'); 
                         }
     
                         
                     }
-*/
+
                     lastMaxSellPrice = currentSellPrice;
                 }
                 
