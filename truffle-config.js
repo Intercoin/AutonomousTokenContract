@@ -81,7 +81,7 @@ module.exports = {
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
     mainnet: {
-        provider: () => new HDWalletProvider(process.env.private_key, 'https://mainnet.infura.io/v3/'+process.env.infura_project_id),
+        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://mainnet.infura.io/v3/'+secretTestnet.infura_project_id),
         network_id: 1,       // Rinkeby's id
         gas: 9000000,        
         //confirmations: 2,    
@@ -89,7 +89,7 @@ module.exports = {
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     },
     rinkeby: {
-        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://rinkeby.infura.io/v3/e55e2b6f7b034f50b1b89ca138a9a6e5'),
+        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://rinkeby.infura.io/v3/'+secretTestnet.infura_project_id),
         network_id: 4,       // Rinkeby's id
         gas: 9000000,        
         //confirmations: 2,    
@@ -97,21 +97,21 @@ module.exports = {
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     },
     bsctest: {
-      provider: () => new HDWalletProvider(process.env.private_key, `https://data-seed-prebsc-1-s1.binance.org:8545`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `https://data-seed-prebsc-1-s1.binance.org:8545`),
       network_id: 97,//0x61,
       confirmations: 10,
       timeoutBlocks: 200,
       skipDryRun: true
     },
     bscmain: {
-      provider: () => new HDWalletProvider(process.env.private_key, `https://bsc-dataseed.binance.org/`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `https://bsc-dataseed.binance.org/`),
       network_id: 56,//0x38,
       confirmations: 10,
       timeoutBlocks: 200,
       skipDryRun: true
     },
     fork_bscmain: {
-      provider: () => new HDWalletProvider(process.env.private_key, `http://localhost:8545/`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `http://localhost:8545/`),
       network_id: 56,//0x38,
       confirmations: 10,
       timeoutBlocks: 200,
@@ -144,7 +144,7 @@ module.exports = {
   api_keys: {
     // etherscan: process.env.etherscan_api_key,
     etherscan: secretTestnet.etherscan_api_key,
-    bscscan: process.env.bscscan_api_key
+    bscscan: secretTestnet.bscscan_api_key
   
   },
 };
