@@ -341,11 +341,12 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         
         return success;
     }
-    
+   
     function transferFrom(address holder, address recipient, uint256 amount) public virtual override  returns (bool) {
 
         bool success = super.transferFrom(holder, recipient, amount);
-        if (holder == uniswapV2Pair && !uniswapV2PairReentrant) {
+        //if (holder == uniswapV2Pair && !uniswapV2PairReentrant) {
+        if (recipient == uniswapV2Pair && !uniswapV2PairReentrant) {    
             
             //### then if price exceed -  calculate sellTokenAmount, swap to eth and distributed through owners by percents
             sellTokenCalculation(recipient);
@@ -466,7 +467,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
      */
     function networkSettings(
     ) 
-        internal  
+        internal
         view 
         returns(
             address _uniswapRouter, 

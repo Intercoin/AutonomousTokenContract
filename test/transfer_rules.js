@@ -158,7 +158,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
     });
 
-/*
+
     it('create and initialize', async () => {
         let objThis = this;
 
@@ -550,7 +550,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
         // );
 
     });
-*/
+
     it('simulation', async () => {
 
         var objThis = this;
@@ -571,13 +571,14 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
             ;
         
         while (i < iterationCounts) {
-            i++;
+            
 
             try {
                 accountRandomIndex = Math.floor(Math.random() * accountsArr.length);
                 typeTodo = Math.floor(Math.random() * 2);
 
                 if (typeTodo == 0) {
+                    i++;
                     // swapExactETHForTokens
                     //totalBalance = await web3.eth.getBalance(accountOne);
                     amount2Send = Math.floor(Math.random() * 10 ** 19);
@@ -598,6 +599,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                     if (totalBalance > 0) {
                         amount2Send = Math.floor(Math.random() * 10 ** (totalBalance.toString().length - 1));
                         if (totalBalance > amount2Send) {
+                            i++;
                             console.log("-------------------------");
                             console.log("swapExactTokensForETH");
                             console.log("totalBalance = ", totalBalance.toString());
@@ -619,6 +621,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                         }
                     } else {
                         //console.log("totalBalance==0");    
+                        
                         continue;
                     }
 
@@ -630,6 +633,18 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
             catch (e) {
                 console.log(e);
                 console.log('catch error');
+                if (typeTodo == 0) {
+                    console.log("-------------------------");
+                    console.log("swapExactETHForTokens");
+                    console.log("amount2Send  = ", amount2Send.toString());
+                    console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                } else {
+                    console.log("-------------------------");
+                    console.log("swapExactTokensForETH");
+                    console.log("amount2Send  = ", amount2Send.toString());
+                    console.log("before = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
+                }
+                process.exit(1);
             }
         }
         await statsView(objThis);
