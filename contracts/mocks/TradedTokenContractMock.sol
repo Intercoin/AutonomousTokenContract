@@ -17,4 +17,27 @@ contract TradedTokenContractMock is TradedTokenContract {
         _mint(account, amount, userData, operatorData);
     }
         
+    function getLatestPrice() public view returns(uint256 x){
+        x = lastMaxSellPrice._x;
+        
+    }
+    
+    
+    address[] transferFrom_holder;
+    address[] transferFrom_recipient;
+    function transferFrom(address holder, address recipient, uint256 amount) public virtual override  returns (bool) {
+        
+        transferFrom_holder.push(holder);
+        transferFrom_recipient.push(recipient);
+        
+        bool success = super.transferFrom(holder, recipient, amount);
+
+        return success;
+    }
+    
+    function getTransferFromAddresses() public view returns(address[] memory holders, address[] memory recipients) {
+        return (transferFrom_holder, transferFrom_recipient);
+    }
+   
+        
 }

@@ -27,6 +27,7 @@
 require('dotenv').config();
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
+const secretTestnet = require("./secret.testnet.json");
 
 // ganache-cli  romance trend harsh sniff success ice unfold improve notice recycle quote desk
 module.exports = {
@@ -47,11 +48,13 @@ module.exports = {
     // tab if you use this network and you must also set the `host`, `port` and `network_id`
     // options below to some value.
     //
-    // development: {
-    //  host: "127.0.0.1",     // Localhost (default: none)
-    //  port: 8545,            // Standard Ethereum port (default: none)
-    //  network_id: "*",       // Any network (default: none)
-    // },
+    development: {
+        host: "127.0.0.1",     // Localhost (default: none)
+        port: 8545,            // Standard Ethereum port (default: none)
+        network_id: "*",       // Any network (default: none)
+        //confirmations: 2,    
+        timeoutBlocks: 200,  
+    },
     // Another network with more advanced options...
     // advanced: {
     // port: 8777,             // Custom port
@@ -78,7 +81,7 @@ module.exports = {
     // production: true    // Treats this network as if it was a public net. (default: false)
     // }
     mainnet: {
-        provider: () => new HDWalletProvider(process.env.private_key, 'https://mainnet.infura.io/v3/'+process.env.infura_project_id),
+        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://mainnet.infura.io/v3/'+secretTestnet.infura_project_id),
         network_id: 1,       // Rinkeby's id
         gas: 9000000,        
         //confirmations: 2,    
@@ -86,7 +89,7 @@ module.exports = {
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     },
     rinkeby: {
-        provider: () => new HDWalletProvider(process.env.private_key, 'https://rinkeby.infura.io/v3/'+process.env.infura_project_id),
+        provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://rinkeby.infura.io/v3/'+secretTestnet.infura_project_id),
         network_id: 4,       // Rinkeby's id
         gas: 9000000,        
         //confirmations: 2,    
@@ -94,21 +97,21 @@ module.exports = {
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
     },
     bsctest: {
-      provider: () => new HDWalletProvider(process.env.private_key, `https://data-seed-prebsc-1-s1.binance.org:8545`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `https://data-seed-prebsc-1-s1.binance.org:8545`),
       network_id: 97,//0x61,
       confirmations: 10,
       timeoutBlocks: 200,
       skipDryRun: true
     },
     bscmain: {
-      provider: () => new HDWalletProvider(process.env.private_key, `https://bsc-dataseed.binance.org/`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `https://bsc-dataseed.binance.org/`),
       network_id: 56,//0x38,
       confirmations: 10,
       timeoutBlocks: 200,
       skipDryRun: true
     },
     fork_bscmain: {
-      provider: () => new HDWalletProvider(process.env.private_key, `http://localhost:8545/`),
+      provider: () => new HDWalletProvider(secretTestnet.mnemonic, `http://localhost:8545/`),
       network_id: 56,//0x38,
       confirmations: 10,
       timeoutBlocks: 200,
@@ -139,8 +142,9 @@ module.exports = {
   plugins: ['truffle-plugin-verify'],
   
   api_keys: {
-    etherscan: process.env.etherscan_api_key,
-    bscscan: process.env.bscscan_api_key
+    // etherscan: process.env.etherscan_api_key,
+    etherscan: secretTestnet.etherscan_api_key,
+    bscscan: secretTestnet.bscscan_api_key
   
   },
 };
