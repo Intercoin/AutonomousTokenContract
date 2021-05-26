@@ -70,7 +70,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     // Taxes
     TransferTax transferTax;
     ProgressiveTax progressiveTax;
-    SellTax sell;
+    SellTax sellTax;
+    BuyTax buyTax;
     
     event RulesUpdated(address rules);
 
@@ -84,6 +85,9 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     
     event SentToInviter(uint256 amount);
     event Received(address sender, uint amount);
+    
+    event NotEnoughTokenToSell(uint256 amount);
+    event NotEnoughTokenToBuy(uint256 amount);
     
     modifier lockTheSwap {
         inSwapAndLiquify = true;
@@ -137,6 +141,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         string memory symbol, 
         address[] memory defaultOperators,
         BulkStruct[] memory _predefinedBalances,
+        BuyTax memory _buyTax,
         SellTax memory _sellTax,
         TransferTax memory _transfer,
         ProgressiveTax memory _progressive,
@@ -177,12 +182,17 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     
         lastMaxSellPrice._x = 0;
     
-        sell.eventsTotal = 100; // times to divide
-        sell.priceIncreaseMin = 10; // 10%
-        sell.slippage = 10; //10%
+        buyTax.tokenAmount = (_buyTax.tokenAmount == 0 ) ? 0 : _buyTax.tokenAmount; // token amount to be buy ;
+        buyTax.priceDecreaseMin = (_buyTax.priceDecreaseMin == 0 ) ? 10 : _buyTax.priceDecreaseMin; // 10%
+        buyTax.slippage = (_buyTax.slippage == 0 ) ? 10 : _buyTax.slippage; //10%
+        buyTax.percentOfSellPrice = (_buyTax.percentOfSellPrice == 0 ) ? 0 : _buyTax.percentOfSellPrice;
+        
+        sellTax.tokenAmount = (_sellTax.tokenAmount == 0 ) ? 0 : _sellTax.tokenAmount; // token amount to be sell ;
+        sellTax.priceIncreaseMin = (_sellTax.priceIncreaseMin == 0 ) ? 10 : _sellTax.priceIncreaseMin; // 10%
+        sellTax.slippage = (_sellTax.slippage == 0 ) ? 10 : _sellTax.slippage; //10%
         
         transferTax.total = (_transfer.total == 0 ) ? 0 : _transfer.total; // default 0 percent;
-        transferTax.toLiquidity = (_transfer.toLiquidity == 10 ) ? 0 : _transfer.toLiquidity; // default 10 percent;
+        transferTax.toLiquidity = (_transfer.toLiquidity == 0 ) ? 10 : _transfer.toLiquidity; // default 10 percent;
         transferTax.toBurn = (_transfer.toBurn == 0 ) ? 0 : _transfer.toBurn; // default 10 percent;
         
         progressiveTax.from = (_progressive.from == 0 ) ? 5 : _progressive.from; // default 5 percent
@@ -222,6 +232,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         require(tokenAmount <= balanceOf(address(this)), 'balance is not enough');
         
         _approve(address(this), address(uniswapV2Router), tokenAmount);
+        
         uniswapV2Router.addLiquidityETH{value: ethAmount}(
             address(this),
             tokenAmount,
@@ -341,10 +352,11 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         
         return success;
     }
-   
+
     function transferFrom(address holder, address recipient, uint256 amount) public virtual override  returns (bool) {
 
         bool success = super.transferFrom(holder, recipient, amount);
+
         //if (holder == uniswapV2Pair && !uniswapV2PairReentrant) {
         if (recipient == uniswapV2Pair && !uniswapV2PairReentrant) {    
             
@@ -354,11 +366,13 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         }
         
         return success;
+        
     }
 
     function sellTokenCalculation(address recipient) internal lockTransferFrom {
 
         FixedPoint.uq112x112 memory currentSellPrice;
+        FixedPoint.uq112x112 memory currentBuyPrice;
         uint112 reserve0;
         uint112 reserve1;
         (reserve0, reserve1, ) = IUniswapV2Pair(uniswapV2Pair).getReserves();
@@ -367,10 +381,12 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         } else {
 
             if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
-                currentSellPrice = FixedPoint.encode(uint112(reserve0)).div(reserve1);
+                currentSellPrice = FixedPoint.fraction(reserve0,reserve1);
+                currentBuyPrice = FixedPoint.fraction(reserve1,reserve0);
             } else {
-                currentSellPrice = FixedPoint.encode(uint112(reserve1)).div(reserve0);
+                currentSellPrice = FixedPoint.fraction(reserve1,reserve0);
                 //currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
+                currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
             }
             if (lastMaxSellPrice._x == 0 && currentSellPrice._x != 0) {
                 lastMaxSellPrice = currentSellPrice;
@@ -378,44 +394,40 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
   
             // priceExcess = latestPrice - latestMaxPrice * (1 + sell.afterPriceIncrease). 
             // And if priceExcess > 0 then you are supposed to sell 
-            FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sell.priceIncreaseMin.add(100));
-            FixedPoint.uq144x112 memory priceExcess;
+            FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sellTax.priceIncreaseMin.add(100));
+            //FixedPoint.uq144x112 memory priceExcess;
             if (currentSellPrice._x > priceInreased._x) {
 
-                priceExcess._x = (currentSellPrice._x)-(priceInreased._x);
+                //priceExcess._x = (currentSellPrice._x)-(priceInreased._x);
                 
-                uint256 sellTokenAmount = (((priceExcess._x).mul(totalSupply()).div(sell.priceIncreaseMin))>>112).div(sell.eventsTotal);
-                
-                if (balanceOf(address(this)) >= sellTokenAmount && sellTokenAmount>0) {
+                //uint256 sellTokenAmount = (((priceExcess._x).mul(totalSupply()).div(sell.priceIncreaseMin))>>112).div(sell.eventsTotal);
+
+                // If there are not enough tokens to sell or sell.tokenAmount is 0 then skip sell and emit event
+
+                if ((balanceOf(address(this)) >= sellTax.tokenAmount) && (sellTax.tokenAmount > 0)) {
 
                     // generate the uniswap pair path of token -> weth
                     address[] memory path = new address[](2);
                     path[0] = address(this);
                     path[1] = uniswapV2Router.WETH();
-                
-                    _approve(address(this), address(uniswapV2Router), sellTokenAmount);
+
+                    _approve(address(this), address(uniswapV2Router), sellTax.tokenAmount);
+                    
                     // make the swap
                     uint256[] memory amounts = uniswapV2Router.swapExactTokensForETH(
-                        sellTokenAmount,
-                        sellTokenAmount.mul(sell.slippage).div(100), //0, // accept any amount of ETH 
+                        (sellTax.tokenAmount),
+                        //(sell.tokenAmount).mul(sell.slippage).div(100), //0, // accept any amount of ETH
+                        (
+                          uint256(FixedPoint.decode144(FixedPoint.mul(currentBuyPrice,sellTax.tokenAmount)))
+                        ).mul(sellTax.slippage),//.div(100), 
                         path,
                         address(this),
                         block.timestamp
                     );
-
-                    //uint256 amountToken0 = amounts[0].mul(100).div(transferTax.toLiquidity);
+   
                     uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
-                    //uint256 amountToken1 = FixedPoint.decode144(currentSellPrice.mul(amountToken0));
                     
-                    uint256 amountToken1;
-                    if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
-                        //amountToken1 = uint256(FixedPoint.decode(FixedPoint.encode(uint112(FixedPoint.decode144(currentSellPrice.mul(reserve1)))).div(reserve0)));
-                        amountToken1 = uint256(((uint256(currentSellPrice._x)).mul(reserve1).div(reserve0))>>112);
-                        
-                    } else {
-                        //amountToken1 = uint256(FixedPoint.decode(FixedPoint.encode(uint112(FixedPoint.decode144(currentSellPrice.mul(reserve0)))).div(reserve1)));
-                        amountToken1 = uint256(((uint256(currentSellPrice._x)).mul(reserve0).div(reserve1))>>112);
-                    }
+                    uint256 amountToken1 = uint256(FixedPoint.decode144(FixedPoint.mul(currentSellPrice,amountToken0)));
                     
                     ///-----
                     if (balanceOf(address(this)) >= amountToken1) {
@@ -437,6 +449,8 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
                     }
 
                     lastMaxSellPrice = currentSellPrice;
+                } else {
+                    emit NotEnoughTokenToSell(sellTax.tokenAmount);
                 }
                 
             }
