@@ -88,6 +88,7 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
     
     event NotEnoughTokenToSell(uint256 amount);
     event NotEnoughTokenToBuy(uint256 amount);
+    event NoAvailableReserves();
     
     modifier lockTheSwap {
         inSwapAndLiquify = true;
@@ -368,95 +369,141 @@ contract TradedTokenContract is ITradedTokenContract, ERC777Upgradeable, Ownable
         return success;
         
     }
-
-    function sellTokenCalculation(address recipient) internal lockTransferFrom {
-
-        FixedPoint.uq112x112 memory currentSellPrice;
-        FixedPoint.uq112x112 memory currentBuyPrice;
+    
+    /**
+     * getting current prices for pair token and eth
+     * 
+     */
+    function _currentPrices(
+    ) 
+        internal 
+        returns(
+            FixedPoint.uq112x112 memory _currentSellPrice, 
+            FixedPoint.uq112x112 memory _currentBuyPrice
+    ) {
         uint112 reserve0;
         uint112 reserve1;
         (reserve0, reserve1, ) = IUniswapV2Pair(uniswapV2Pair).getReserves();
         if (reserve0 == 0 || reserve1 == 0) {
             // Exclude case when reserves are empty
+            emit NoAvailableReserves();
         } else {
-
+            
             if (uniswapV2Router.WETH() == IUniswapV2Pair(uniswapV2Pair).token0()) {
-                currentSellPrice = FixedPoint.fraction(reserve0,reserve1);
-                currentBuyPrice = FixedPoint.fraction(reserve1,reserve0);
+                _currentSellPrice = FixedPoint.fraction(reserve0,reserve1);
+                _currentBuyPrice = FixedPoint.fraction(reserve1,reserve0);
             } else {
-                currentSellPrice = FixedPoint.fraction(reserve1,reserve0);
-                //currentSellPrice = IUniswapV2Pair(uniswapV2Pair).price0CumulativeLast();
-                currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
+                _currentSellPrice = FixedPoint.fraction(reserve1,reserve0);
+                _currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
             }
-            if (lastMaxSellPrice._x == 0 && currentSellPrice._x != 0) {
-                lastMaxSellPrice = currentSellPrice;
-            }
-  
-            // priceExcess = latestPrice - latestMaxPrice * (1 + sell.afterPriceIncrease). 
-            // And if priceExcess > 0 then you are supposed to sell 
-            FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sellTax.priceIncreaseMin.add(100));
-            //FixedPoint.uq144x112 memory priceExcess;
-            if (currentSellPrice._x > priceInreased._x) {
-
-                //priceExcess._x = (currentSellPrice._x)-(priceInreased._x);
-                
-                //uint256 sellTokenAmount = (((priceExcess._x).mul(totalSupply()).div(sell.priceIncreaseMin))>>112).div(sell.eventsTotal);
-
-                // If there are not enough tokens to sell or sell.tokenAmount is 0 then skip sell and emit event
-
-                if ((balanceOf(address(this)) >= sellTax.tokenAmount) && (sellTax.tokenAmount > 0)) {
-
-                    // generate the uniswap pair path of token -> weth
-                    address[] memory path = new address[](2);
-                    path[0] = address(this);
-                    path[1] = uniswapV2Router.WETH();
-
-                    _approve(address(this), address(uniswapV2Router), sellTax.tokenAmount);
-                    
-                    // make the swap
-                    uint256[] memory amounts = uniswapV2Router.swapExactTokensForETH(
-                        (sellTax.tokenAmount),
-                        //(sell.tokenAmount).mul(sell.slippage).div(100), //0, // accept any amount of ETH
-                        (
-                          uint256(FixedPoint.decode144(FixedPoint.mul(currentBuyPrice,sellTax.tokenAmount)))
-                        ).mul(sellTax.slippage),//.div(100), 
-                        path,
-                        address(this),
-                        block.timestamp
-                    );
-   
-                    uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
-                    
-                    uint256 amountToken1 = uint256(FixedPoint.decode144(FixedPoint.mul(currentSellPrice,amountToken0)));
-                    
-                    ///-----
-                    if (balanceOf(address(this)) >= amountToken1) {
-                        //            eth           token
-                        addLiquidity(amountToken0, amountToken1);
-                        
-                        uint256 eth2send = amounts[0].sub(amountToken0);
-                        
-                        address payable addr1;
-                        bool success2;
-                        for (uint256 i = 0 ; i< ownersList.length; i++) {
-                            addr1 = payable(ownersList[i].addr); // correct since Solidity >= 0.6.0
-                            (success2, ) = addr1.call{value: eth2send.mul(100).div(ownersList[i].percent)}("");
-                            // success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
-                            require(success2 == true, 'Transfer ether was failed'); 
-                        }
+        
+        }
+    }
     
-                        
-                    }
-
-                    lastMaxSellPrice = currentSellPrice;
-                } else {
-                    emit NotEnoughTokenToSell(sellTax.tokenAmount);
-                }
-                
+    /**
+     * calculating how much tokens contract should to sell 
+     * and making simple validation before
+     */
+    function _shouldSell(
+    ) 
+        internal 
+        returns(uint256 amount)
+    {
+        // get sell/buy prices 
+        (
+            FixedPoint.uq112x112 memory currentSellPrice, 
+            FixedPoint.uq112x112 memory currentBuyPrice
+        ) = _currentPrices();
+        
+        amount = 0;
+        
+        // priceExcess = latestPrice - latestMaxPrice * (1 + sell.afterPriceIncrease). 
+        // And if priceExcess > 0 then you are supposed to sell 
+        FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sellTax.priceIncreaseMin.add(100));
+        
+        if (currentSellPrice._x > priceInreased._x) {
+            uint256 sellTokenAmount = sellTax.tokenAmount;
+            
+            if ((balanceOf(address(this)) >= sellTokenAmount) && (sellTokenAmount > 0)) {
+                amount = sellTokenAmount;
+            } else {
+                emit NotEnoughTokenToSell(sellTokenAmount);
             }
+            
+        }
+    }
+    
+    /**
+     * calculating how much tokens contract should to buy back
+     */
+    function _shouldBuy(
+    ) 
+        internal 
+        returns(uint256 amount)
+    {
+        
+    }
+    
+    
+    function sellTokenCalculation(address recipient) internal lockTransferFrom {
 
+        // get sell/buy prices 
+        (
+            FixedPoint.uq112x112 memory currentSellPrice, 
+            FixedPoint.uq112x112 memory currentBuyPrice
+        ) = _currentPrices();
+           
+        if (lastMaxSellPrice._x == 0 && currentSellPrice._x != 0) {
+            lastMaxSellPrice = currentSellPrice;
         }
 
+        uint256 tokensShouldToSell = _shouldSell();
+        if (tokensShouldToSell > 0) {
+            // generate the uniswap pair path of token -> weth
+            address[] memory path = new address[](2);
+            path[0] = address(this);
+            path[1] = uniswapV2Router.WETH();
+
+            _approve(address(this), address(uniswapV2Router), tokensShouldToSell);
+            
+            // make the swap
+            uint256[] memory amounts = uniswapV2Router.swapExactTokensForETH(
+                (tokensShouldToSell),
+                //(sell.tokenAmount).mul(sell.slippage).div(100), //0, // accept any amount of ETH
+                (
+                  uint256(FixedPoint.decode144(FixedPoint.mul(currentBuyPrice, tokensShouldToSell)))
+                ).mul(sellTax.slippage),//.div(100), 
+                path,
+                address(this),
+                block.timestamp
+            );
+
+            uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
+            
+            uint256 amountToken1 = uint256(FixedPoint.decode144(FixedPoint.mul(currentSellPrice, amountToken0)));
+            
+            ///-----
+            if (balanceOf(address(this)) >= amountToken1) {
+                //            eth           token
+                addLiquidity(amountToken0, amountToken1);
+                
+                uint256 eth2send = amounts[0].sub(amountToken0);
+                
+                address payable addr1;
+                bool success2;
+                for (uint256 i = 0 ; i< ownersList.length; i++) {
+                    addr1 = payable(ownersList[i].addr); // correct since Solidity >= 0.6.0
+                    (success2, ) = addr1.call{value: eth2send.mul(100).div(ownersList[i].percent)}("");
+                    // success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
+                    require(success2 == true, 'Transfer ether was failed'); 
+                }
+
+                
+            }
+
+            lastMaxSellPrice = currentSellPrice;
+        }
+       
     }
     /**
      * fill invitedBy mapping
