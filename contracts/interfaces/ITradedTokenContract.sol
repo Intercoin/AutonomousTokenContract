@@ -3,13 +3,13 @@ pragma solidity ^0.8.0;
 
 interface ITradedTokenContract {
     struct SellTax {
-        uint256 tokenAmount; // times to divide
+        uint256 percentOfTokenAmount; // times to divide
         uint256 priceIncreaseMin;
         uint256 slippage;
     }
     
     struct BuyTax {
-        uint256 tokenAmount;
+        uint256 percentOfTokenAmount;
         uint256 priceDecreaseMin;
         uint256 slippage;
         uint256 percentOfSellPrice;

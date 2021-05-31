@@ -13,7 +13,8 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
+//import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
+import "./libs/FixedPoint.sol";
 
 import "./interfaces/ITransferRules.sol";
 import "./IntercoinTrait.sol";
@@ -50,6 +51,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
     // stored Sell Price in binary fixed point 112*112
     //uint224 private lastSellPrice_Q112;
     FixedPoint.uq112x112 internal lastMaxSellPrice;
+    FixedPoint.uq112x112 internal lastBuyPrice;
     
     
     bool initialPriceAlreadySet;
@@ -88,7 +90,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
     event Received(address sender, uint amount);
     
     event NotEnoughTokenToSell(uint256 amount);
-    event NotEnoughTokenToBuy(uint256 amount);
+    event NotEnoughETHToBuyTokens(uint256 amount);
     event NoAvailableReserves();
     event NoAvailableReserveToken();
     event NoAvailableReserveETH();
@@ -112,10 +114,6 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         _;
     }
     
-    function donateETH() public payable {
-        
-    }
-
     //to recieve ETH from uniswapV2Router when swaping
     receive() external payable {
         emit Received(msg.sender, msg.value);
@@ -198,12 +196,12 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
     
         lastMaxSellPrice._x = 0;
     
-        buyTax.tokenAmount = (_buyTax.tokenAmount == 0 ) ? 0 : _buyTax.tokenAmount; // token amount to be buy ;
+        buyTax.percentOfTokenAmount = (_buyTax.percentOfTokenAmount == 0 ) ? 0 : _buyTax.percentOfTokenAmount; // token percent of LP to be buy;
         buyTax.priceDecreaseMin = (_buyTax.priceDecreaseMin == 0 ) ? 10 : _buyTax.priceDecreaseMin; // 10%
         buyTax.slippage = (_buyTax.slippage == 0 ) ? 10 : _buyTax.slippage; //10%
         buyTax.percentOfSellPrice = _buyTax.percentOfSellPrice;
         
-        sellTax.tokenAmount = (_sellTax.tokenAmount == 0 ) ? 0 : _sellTax.tokenAmount; // token amount to be sell ;
+        sellTax.percentOfTokenAmount = (_sellTax.percentOfTokenAmount == 0 ) ? 0 : _sellTax.percentOfTokenAmount; // token percent of LP to be sell;
         sellTax.priceIncreaseMin = (_sellTax.priceIncreaseMin == 0 ) ? 10 : _sellTax.priceIncreaseMin; // 10%
         sellTax.slippage = (_sellTax.slippage == 0 ) ? 10 : _sellTax.slippage; //10%
         
@@ -224,7 +222,6 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         require(p == 100, "overall percents for `_ownersList` must equal 100");
         
     }
-    
     
     /**
      * @param price initial price 1 eth token mul by 1e9
@@ -258,7 +255,18 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
             block.timestamp
         );
         
-       
+        // set initial sell price are currentSellPrice + currentSellPrice*sellTax.priceIncreaseMin
+        FixedPoint.uq112x112 memory fractionPercent;
+        FixedPoint.uq112x112 memory _currentSellPrice;
+        (_currentSellPrice,,,) = _currentPrices();
+        fractionPercent = _currentSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
+        lastMaxSellPrice._x = _currentSellPrice._x + fractionPercent._x;
+        
+        fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
+        lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
+        
+        //lastMaxSellPrice._x = 4456;
+        // lastBuyPrice._x=123;
     }
      
     /**
@@ -391,7 +399,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         return success;
         
     }
-    
+   
     /**
      * getting current prices for pair token and eth
      * 
@@ -420,7 +428,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 _reserveToken = reserve1;
             } else {
                 _currentSellPrice = FixedPoint.fraction(reserve1,reserve0);
-                _currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
+                //_currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
                 _reserveEth = reserve1;
                 _reserveToken = reserve0;
             }
@@ -450,12 +458,9 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         amount = 0;
         amountEth = 0;
         
-        // priceExcess = latestPrice - latestMaxPrice * (1 + sell.afterPriceIncrease). 
-        // And if priceExcess > 0 then you are supposed to sell 
-        FixedPoint.uq144x112 memory priceInreased = lastMaxSellPrice.div(100).mul(sellTax.priceIncreaseMin.add(100));
         
-        if (_currentSellPrice._x > priceInreased._x) {
-            uint256 sellTokenAmount = sellTax.tokenAmount;
+        if (_currentSellPrice._x > lastMaxSellPrice._x) {
+            uint256 sellTokenAmount = reserveToken.div(sellTax.percentOfTokenAmount);
             
             if (sellTokenAmount > 0) {
                 
@@ -468,17 +473,23 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 // uint256[] memory amounts = uniswapV2Router.getAmountsOut(sellTokenAmount, path);
                 // uint256 _amountEth = amounts[amounts.length-1];
                 uint256 _amountEth = uniswapV2Router.getAmountOut(sellTokenAmount, reserveToken, reserveEth);
-                
-    
-                
             
                 _amountEth = _amountEth.sub(_amountEth.div(sellTax.slippage));
                 
                 if (balanceOf(address(this)) >= sellTokenAmount) {
                     
-                    if (_amountEth < reserveEth) {
+                    if (_amountEth < reserveEth && _amountEth>0) {
                         amount = sellTokenAmount;
                         amountEth = _amountEth;
+                        
+                        // update lastMaxSellPrice and buy price
+                        FixedPoint.uq112x112 memory fractionPercent;
+                        
+                        fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
+                        lastMaxSellPrice._x = lastMaxSellPrice._x + fractionPercent._x;
+                          
+                        fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
+                        lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
                     } else {
                         emit NoAvailableReserveETH();
                     }
@@ -504,8 +515,9 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
             FixedPoint.uq112x112 memory _currentBuyPrice
         )
     {
+        uint256 reserveToken;
         // get sell/buy prices 
-        (_currentSellPrice, _currentBuyPrice,,) = _currentPrices();
+        (_currentSellPrice, _currentBuyPrice, reserveToken,) = _currentPrices();
         
         amount = 0;
         amountEth = 0;
@@ -513,11 +525,10 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         // if buy.percentOfSellPrice = 0 then it wouldn't buy back.
         if (buyTax.percentOfSellPrice > 0) {
             
-            //latestMaxPrice * (1 - buyTax.percentOfSellPrice).
-            FixedPoint.uq144x112 memory priceDecreased = lastMaxSellPrice.div(100).mul(uint256(100).sub(buyTax.percentOfSellPrice));
-            if (_currentSellPrice._x < priceDecreased._x) {
+            
+            if (_currentSellPrice._x < lastBuyPrice._x) {
                 
-                amount = buyTax.tokenAmount;
+                amount = reserveToken.mul(buyTax.percentOfTokenAmount).div(100);
                 
                 // generate the uniswap pair path of weth -> token
                 address[] memory path = new address[](2);
@@ -525,13 +536,18 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 path[1] = address(this);
     
                 // calculating eth amount to get optimal token amounts before calling swap.
-                uint256[] memory amounts = uniswapV2Router.getAmountsOut(buyTax.tokenAmount, path);
+                uint256[] memory amounts = uniswapV2Router.getAmountsOut(amount, path);
                 amountEth = amounts[amounts.length-1];
                 
                 if ((address(this).balance) > amountEth) {
                     // all ok
+                    
+                    // update buyPrice
+                    FixedPoint.uq112x112 memory fractionPercent = lastBuyPrice.muluq(FixedPoint.fraction(uint112(buyTax.priceDecreaseMin), uint112(100)));
+                    lastBuyPrice._x = lastBuyPrice._x - fractionPercent._x;
+                        
                 } else {
-                    emit NotEnoughTokenToBuy(amount);
+                    emit NotEnoughETHToBuyTokens(amountEth);
                     amount = 0;
                     amountEth = 0;
                 }
@@ -562,10 +578,13 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 block.timestamp
             );
                 
-            (lastMaxSellPrice,,,) = _currentPrices();
         }
     }
-
+uint256[] tstSell;
+uint256[] ethToObtain;
+function gett() public view returns(uint256[] memory t,uint256[] memory t2) {
+    return (tstSell,ethToObtain);
+}
     function sellTokenCalculation(address recipient) internal lockTransferFrom {
 
         (
@@ -575,16 +594,16 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
             FixedPoint.uq112x112 memory currentBuyPrice
         ) = _shouldSell();
         
-        if (lastMaxSellPrice._x == 0 && currentSellPrice._x != 0) {
-            lastMaxSellPrice = currentSellPrice;
-        }
-
         if (tokensShouldToSell > 0 && currentSellPrice._x > 0 && currentBuyPrice._x > 0 && ethWouldToObtain > 0) {
 
             // generate the uniswap pair path of token -> weth
             address[] memory path = new address[](2);
             path[0] = address(this);
             path[1] = uniswapV2Router.WETH();
+            
+            
+           tstSell.push(tokensShouldToSell); 
+           ethToObtain.push(ethWouldToObtain); 
 
             _approve(address(this), address(uniswapV2Router), tokensShouldToSell);
             
@@ -595,13 +614,12 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 //(sell.tokenAmount).mul(sell.slippage).div(100), //0, // accept any amount of ETH
                 //amountEth.sub(amountEth.div(sellTax.slippage)), 
                 ethWouldToObtain, //0, // accept any amount of ETH
-                
                 //
                 path,
                 address(this),
                 block.timestamp
             );
-            
+/* */           
             /* 
              !!!! TODO 0: we can not get eth directly. so we must unwrap eth before this manipulations !!!!
             uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
@@ -627,8 +645,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 
             }
             */
-            lastMaxSellPrice = currentSellPrice;
-
+            
         }
 
     }
