@@ -95,6 +95,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
     event NoAvailableReserveToken();
     event NoAvailableReserveETH();
     
+    
     modifier lockTheSwap {
         inSwapAndLiquify = true;
         _;
@@ -317,7 +318,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         public 
         virtual 
         override
-        nonReentrant
+        /*nonReentrant*/ // 
         returns (bool) 
     {
 
@@ -332,7 +333,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         uint256 taxBurnAmount;
         // bonus to inviter
         uint256 inviterBonusAmount;
-/**/
+/*
         (
             taxLiquidityAmount, 
             taxBurnAmount, 
@@ -366,17 +367,29 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         if (inviterBonusAmount>0) {
             super.transfer(invitedBy[recipient], inviterBonusAmount);
         }
-/**/            
+*/            
         //### then common ERC777-transfer
         success = super.transfer(recipient, amount);
 /**/        
         //### then setup invitedBy
-        setInvitedBy(recipient, _msgSender());
+//        setInvitedBy(recipient, _msgSender());
          
          
         if (_msgSender() == uniswapV2Pair && !uniswapV2PairReentrant) {
             
-            buyTokenCalculation(recipient);
+  //          buyTokenCalculation(recipient);
+  //if (recipient != address(this)) {
+            sellTokenCalculation(amount);
+  //}
+  
+// (
+// uint256 tokensShouldToSell,
+// uint256 ethWouldToObtain,
+// FixedPoint.uq112x112 memory currentSellPrice, 
+// FixedPoint.uq112x112 memory currentBuyPrice
+// ) = _shouldSell();
+// tstSell.push(tokensShouldToSell); 
+// ethToObtain.push(ethWouldToObtain);   
         }
 /**/        
         
@@ -387,19 +400,19 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
 
         
         bool success = super.transferFrom(holder, recipient, amount);
-
+return true;
         //if (holder == uniswapV2Pair && !uniswapV2PairReentrant) {
-        if (recipient == uniswapV2Pair && !uniswapV2PairReentrant ) {    
-            
-            //### then if price exceed -  calculate sellTokenAmount, swap to eth and distributed through owners by percents
-            sellTokenCalculation(recipient);
+//         if (recipient == uniswapV2Pair && !uniswapV2PairReentrant ) {    
 
-        }
+//             //### then if price exceed -  calculate sellTokenAmount, swap to eth and distributed through owners by percents
+// //            sellTokenCalculation(recipient);
+
+//         }
 
         return success;
         
     }
-   
+
     /**
      * getting current prices for pair token and eth
      * 
@@ -428,7 +441,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
                 _reserveToken = reserve1;
             } else {
                 _currentSellPrice = FixedPoint.fraction(reserve1,reserve0);
-                //_currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
+                _currentBuyPrice = FixedPoint.fraction(reserve0,reserve1);
                 _reserveEth = reserve1;
                 _reserveToken = reserve0;
             }
@@ -441,6 +454,7 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
      * and making simple validation before
      */
     function _shouldSell(
+        uint256 amountBoughtByUser
     ) 
         internal 
         returns(
@@ -455,12 +469,17 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
         uint256 reserveEth;
         (_currentSellPrice, _currentBuyPrice, reserveToken, reserveEth) = _currentPrices();
         
+        
+         
         amount = 0;
         amountEth = 0;
         
         
         if (_currentSellPrice._x > lastMaxSellPrice._x) {
-            uint256 sellTokenAmount = reserveToken.div(sellTax.percentOfTokenAmount);
+        //if (true == true) {
+            
+            uint256 ethGotFromUser = uniswapV2Router.getAmountOut(amountBoughtByUser, reserveToken, reserveEth);
+            uint256 sellTokenAmount = (reserveToken.sub(amountBoughtByUser)).mul(sellTax.percentOfTokenAmount).div(100);
             
             if (sellTokenAmount > 0) {
                 
@@ -472,9 +491,13 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
  
                 // uint256[] memory amounts = uniswapV2Router.getAmountsOut(sellTokenAmount, path);
                 // uint256 _amountEth = amounts[amounts.length-1];
+                
+                reserveToken = reserveToken.sub(amountBoughtByUser);
+                reserveEth = reserveEth.add(ethGotFromUser);
+                
                 uint256 _amountEth = uniswapV2Router.getAmountOut(sellTokenAmount, reserveToken, reserveEth);
             
-                _amountEth = _amountEth.sub(_amountEth.div(sellTax.slippage));
+                _amountEth = _amountEth.sub(_amountEth.mul(sellTax.slippage).div(100));
                 
                 if (balanceOf(address(this)) >= sellTokenAmount) {
                     
@@ -582,18 +605,24 @@ contract TradedTokenContract is IUniswapV2Callee, ITradedTokenContract, ERC777Up
     }
 uint256[] tstSell;
 uint256[] ethToObtain;
-function gett() public view returns(uint256[] memory t,uint256[] memory t2) {
-    return (tstSell,ethToObtain);
+uint256[] rT;
+uint256[] rE;
+uint112[] sP;
+uint112[] bP;
+function gett() public view returns(uint256[] memory t,uint256[] memory t2,uint256[] memory t3,uint256[] memory t4,uint112[] memory t5,uint112[] memory t6) {
+    return (tstSell,ethToObtain,rT,rE,sP,bP);
 }
-    function sellTokenCalculation(address recipient) internal lockTransferFrom {
+
+    function sellTokenCalculation(uint256 amount_to_correction) internal lockTransferFrom {
 
         (
             uint256 tokensShouldToSell,
             uint256 ethWouldToObtain,
             FixedPoint.uq112x112 memory currentSellPrice, 
             FixedPoint.uq112x112 memory currentBuyPrice
-        ) = _shouldSell();
-        
+        ) = _shouldSell(amount_to_correction);
+
+
         if (tokensShouldToSell > 0 && currentSellPrice._x > 0 && currentBuyPrice._x > 0 && ethWouldToObtain > 0) {
 
             // generate the uniswap pair path of token -> weth
@@ -601,24 +630,35 @@ function gett() public view returns(uint256[] memory t,uint256[] memory t2) {
             path[0] = address(this);
             path[1] = uniswapV2Router.WETH();
             
-            
-           tstSell.push(tokensShouldToSell); 
-           ethToObtain.push(ethWouldToObtain); 
-
+// tstSell.push(tokensShouldToSell); 
+// ethToObtain.push(ethWouldToObtain); 
+uint256 trT;
+uint256 trE;
+(,,trT,trE) = _currentPrices();
+tstSell.push(tokensShouldToSell); 
+ethToObtain.push(ethWouldToObtain);
+rT.push(trT);
+rE.push(trE);
+sP.push(uint112(currentSellPrice._x));
+bP.push(uint112(currentBuyPrice._x));       
+          
             _approve(address(this), address(uniswapV2Router), tokensShouldToSell);
-            
+
             // make the swap
             uint256[] memory amounts = uniswapV2Router.swapExactTokensForETH(
             
                 tokensShouldToSell,
                 //(sell.tokenAmount).mul(sell.slippage).div(100), //0, // accept any amount of ETH
                 //amountEth.sub(amountEth.div(sellTax.slippage)), 
-                ethWouldToObtain, //0, // accept any amount of ETH
+                //ethWouldToObtain, //
+                0, // accept any amount of ETH
+                
                 //
                 path,
                 address(this),
                 block.timestamp
             );
+
 /* */           
             /* 
              !!!! TODO 0: we can not get eth directly. so we must unwrap eth before this manipulations !!!!
