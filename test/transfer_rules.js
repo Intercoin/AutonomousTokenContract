@@ -45,14 +45,14 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
     
     var buyTax = [
-        '1', 
+        '10', 
         10, 
         10,
         10,
     ];
     //var sellTax = [100, 10, 10];
     var sellTax = [
-        '1', 
+        '10', 
         20, 
         10
     ];
@@ -581,7 +581,8 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
         
         let ITRContractBalanceBefore = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
 
-        let iterationCounts = 20,
+        let iterationCounts = 300,
+            errorsHappened = 0,
             i = 0,
             accountRandomIndex,
             typeTodo,
@@ -622,7 +623,7 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
                 
 
 //                await statsView(objThis);
-typeTodo = 0;
+//typeTodo = 0;
                 if (typeTodo == 0) {
                     i++;
                     // swapExactETHForTokens
@@ -640,7 +641,7 @@ typeTodo = 0;
                         accountsArr[accountRandomIndex],
                         ts2050y, { from: accountsArr[accountRandomIndex], value: '0x' + BigNumber(amount2Send).toString(16) }
                     );
-                    await statsView(objThis);             
+                    
                     // console.log("After(ITR) = ", (await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex])).toString());
                     console.log('latestPrice=', (await objThis.TradedTokenContractMockInstance.getLatestPrice()).toString());
                     tmp = await objThis.TradedTokenContractMockInstance.getttt();
@@ -688,11 +689,15 @@ typeTodo = 0;
 
                 }
 
-                // await statsView(objThis);
+                await statsView(objThis);
+                // try to correct price externally after each iteration
+                await objThis.TradedTokenContractMockInstance.correctLiquidity({ from: accountTen });
+                
             }
             catch (e) {
                 console.log(e);
                 console.log('catch error');
+                errorsHappened ++;
                 if (typeTodo == 0) {
                     //console.log("-------------------------");
                     console.log("swapExactETHForTokens");
@@ -709,22 +714,16 @@ typeTodo = 0;
                 continue;
                 //process.exit(1);
             }
+            
+            
         }
         //await statsView(objThis);
         
         
         let ITRContractBalanceAfter = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
         console.log('latestPrice=', (await objThis.TradedTokenContractMockInstance.getLatestPrice()).toString());
-        
-        tmp = await objThis.TradedTokenContractMockInstance.gett();
-
-        console.log('tstoSell    = ', tmp[0].map(toStr));
-        console.log('ethtoObtain = ', tmp[1].map(toStr));
-        console.log('reserveToken= ', tmp[2].map(toStr));
-        console.log('reserveETH  = ', tmp[3].map(toStr));
-        console.log('cSellPrice  = ', tmp[4].map(toStr));
-        console.log(' cBuyPrice  = ', tmp[5].map(toStr));
-
+        console.log("Total Iteractions = ", i);
+        console.log("Errors Happened   = ", errorsHappened);
         // console.log('ITRContractBalanceBefore=', ITRContractBalanceBefore.toString());
         // console.log('ITRContractBalanceAfter =', ITRContractBalanceAfter.toString());
 

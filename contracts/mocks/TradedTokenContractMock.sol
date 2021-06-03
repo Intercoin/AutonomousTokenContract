@@ -25,7 +25,15 @@ contract TradedTokenContractMock is TradedTokenContract {
     function donateETH() public payable {
         
     }
-
+    
+    function getBlockNow() public view returns(uint256) {
+        return block.timestamp;
+    }
+    
+    function getChainid() public view returns(uint256) {
+        return block.chainid;
+    }
+    
     
     // address[] transferFrom_holder;
     // address[] transferFrom_recipient;
