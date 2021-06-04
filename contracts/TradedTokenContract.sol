@@ -10,8 +10,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
-
+//import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 //import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
 import "./libs/FixedPoint.sol";
@@ -24,8 +23,15 @@ import "./interfaces/ITradedTokenContract.sol";
 
 
 contract TradedTokenContract is 
-/*IUniswapV2Callee, */
-ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IERC777RecipientUpgradeable, ERC1820ImplementerUpgradeable, ReentrancyGuardUpgradeable {
+    // IUniswapV2Callee, 
+    ITradedTokenContract, 
+    ERC777Upgradeable, 
+    OwnableUpgradeable, 
+    IntercoinTrait, 
+    IERC777RecipientUpgradeable, 
+    ERC1820ImplementerUpgradeable, 
+    ReentrancyGuardUpgradeable 
+{
     
     using SafeMathUpgradeable for uint256;
 
@@ -79,7 +85,6 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
     
     event RulesUpdated(address rules);
 
-    event MinTokensBeforeSwapUpdated(uint256 minTokensBeforeSwap);
     event SwapAndLiquifyEnabledUpdated(bool enabled);
     event SwapAndLiquify(
         uint256 tokensSwapped,
@@ -87,7 +92,7 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
         uint256 tokensIntoLiqudity
     );
     
-    event SentToInviter(uint256 amount);
+    event SentBonusToInviter(uint256 amount);
     event Received(address sender, uint amount);
     
     event NotEnoughTokenToSell(uint256 amount);
@@ -95,6 +100,9 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
     event NoAvailableReserves();
     event NoAvailableReserveToken();
     event NoAvailableReserveETH();
+    
+    event ContractSellTokens(uint256 amount);
+    event ContractBuyBackTokens(uint256 amount);
     
     
     modifier lockTheSwap {
@@ -562,6 +570,7 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
         //### then send to inviter some bonus(inviterBonusAmount)
         if (inviterBonusAmount>0) {
             super.transfer(invitedBy[recipient], inviterBonusAmount);
+            emit SentBonusToInviter(inviterBonusAmount);
         }
         
         return amount;
@@ -686,7 +695,7 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
                 address(this),
                 block.timestamp
             );
-                
+            emit ContractBuyBackTokens(tokensShouldToBuy);
         }
     }
     
@@ -723,7 +732,7 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
                 block.timestamp
             );
 
-
+            emit ContractSellTokens(tokensShouldToSell);
             
             
             uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
@@ -774,15 +783,11 @@ ITradedTokenContract, ERC777Upgradeable, OwnableUpgradeable, IntercoinTrait, IER
         uint256 reserveEth;
         (_currentSellPrice, _currentBuyPrice, reserveToken, reserveEth) = _currentPrices();
         
-        
-         
         amount = 0;
         amountEth = 0;
         
-        
         if (_currentSellPrice._x > lastMaxSellPrice._x) {
-        //if (true == true) {
-            
+
             uint256 sellTokenAmount = (reserveToken).mul(sellTax.percentOfTokenAmount).div(100);
             
             if (sellTokenAmount > 0) {

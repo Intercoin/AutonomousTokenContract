@@ -76,6 +76,12 @@ Once installed will be use methods:
 		<td>Anyone</td>
 		<td>bulk transfer support</td>
 	</tr>
+	<tr>
+		<td><a href="#correctprices">correctPrices</a></td>
+		<td>Anyone</td>
+		<td>initiate mechanism to smooth out buy and sell prices</td>
+	</tr>
+	
 
 ## Settings
 TotalSupply are 1_000_000_000 tokens
@@ -90,9 +96,10 @@ name|string| ERC777 token's name
 symbol|string| ERC777 token's symbol 
 defaultOperators|address[]| ERC777 token's defaultOperators 
 _predefinedBalances|tuple[]| array of tuples like [address,amount] of user balances that need to be predefined 
-_sellTax|tuple| sell settings -  [eventsTotal, priceIncreaseMin, slippage]. Default are [100, 10, 10]
-_transfer|tuple| transfer settings - [total, toLiquidity, toBurn]. Default are [0, 10, 0] 
-_progressive|tuple| progressive settings - [from, to, duration]. Default are [5, 100, 3600]
+_buyTax|tuple| buy settings -  [percentOfTokenAmount, priceIncreaseMin, slippage, percentOfSellPrice]. Default are [0, 10, 10, 0]
+_sellTax|tuple| sell settings -  [percentOfTokenAmount, priceIncreaseMin, slippage]. Default are [0, 10, 10]
+_transferTax|tuple| transfer settings - [total, toLiquidity, toBurn]. Default are [0, 10, 0] 
+_progressiveTax|tuple| progressive settings - [from, to, duration]. Default are [5, 100, 3600]
 _ownersList|tuple[]|array of tuples like [owner address, percent]. sum of percents require to be 100%
         
 #### setInitialPrice
@@ -120,12 +127,82 @@ name  | type | description
 _bulkStruct|tuple[] array of tuples [recipient, address]
 _data|bytes|data to operatorSend params
 
+#### correctPrices
+mechanism to smooth out buy and sell prices
+
+## Events
+
+<table>
+<thead>
+	<tr>
+		<th>event name</th>
+		<th>description</th>
+	</tr>
+</thead>
+<tbody>
+	<tr>
+		<td>RulesUpdated</td>
+		<td>when Rules contract updated</td>
+	</tr>
+	<tr>
+		<td>SwapAndLiquifyEnabledUpdated</td>
+		<td>when flag SwapAndLiquifyEnabled changed</td>
+	</tr>
+	<tr>
+		<td>SwapAndLiquify</td>
+		<td>when SwapAndLiquify happens</td>
+	</tr>
+	<tr>
+		<td>SentBonusToInviter</td>
+		<td>when inviter get some bonus</td>
+	</tr>
+	<tr>
+		<td>Received</td>
+		<td>when contract get ETH </td>
+	</tr>
+	<tr>
+		<td>NotEnoughTokenToSell</td>
+		<td>when contract didn't have enough tokens to sell</td>
+	</tr>
+	<tr>
+		<td>NotEnoughETHToBuyTokens</td>
+		<td>when contract didn't have enough Coins to buy tokens</td>
+	</tr>
+	<tr>
+		<td>NoAvailableReserves</td>
+		<td>when no available LP reserve</td>
+	</tr>
+	<tr>
+		<td>NoAvailableReserveToken</td>
+		<td>when no available tokens in LP reserve</td>
+	</tr>
+	<tr>
+		<td>NoAvailableReserveETH</td>
+		<td>when no available Coins LP reserve</td>
+	</tr>
+	<tr>
+		<td>ContractSellTokens</td>
+		<td>when contract sell additional tokens to LP successfully</td>
+	</tr>
+	<tr>
+		<td>ContractBuyBackTokens</td>
+		<td>when contract buy back tokens from LP successfully</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td></td>
+	</tr>
+</table>
+
 ## Example to use
 After deploy owner need:
 - to call method <a href="#initialize">initialize</a>. to correctly initialize contract and all sub contracts inside
-- to call method <a href="#updaterestrictionsandrules">_updateRestrictionsAndRules</a> to link our token with Transfer Rules contract.
-- to send to contract some coins(eth,bnb) and call method <a href="#setinitialprice">setInitialPrice</a> to add to liquidity pool all contract coins and calculated tokens amount via transferred price as param
+- [optionally] if need to activate Transfer Rules regulation:
+-- to deploy TransferRules contract (or get exist address)
+-- to call method <a href="#updaterestrictionsandrules">_updateRestrictionsAndRules</a> to link our token with Transfer Rules contract.
+- to send to contract some coins(eth or bnb) and call method <a href="#setinitialprice">setInitialPrice</a> to add to liquidity pool all contract's coins and calculated tokens amount via transferred price as param
 - at last owner should call `renounceOwnership` to show that contract does not own him
 now any person can use pancakeSwap to exchange his coins to our tokens and vice versa
+- [periodically] need to call <a href="#correctprices">correctPrices</a> to smooth out prices. Logic described at <a href="https://github.com/Intercoin/TradedTokenContract/issues/6">issues-6</a>
 
 

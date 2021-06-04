@@ -45,14 +45,14 @@ contract('TradedTokenContract, TransferRules and PancakeSwap', (accounts) => {
 
     
     var buyTax = [
-        '10', 
+        10, 
         10, 
         10,
         10,
     ];
     //var sellTax = [100, 10, 10];
     var sellTax = [
-        '10', 
+        10, 
         20, 
         10
     ];
