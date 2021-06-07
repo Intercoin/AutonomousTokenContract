@@ -275,7 +275,9 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
 
                 await statsView(objThis);
                 // try to correct price externally after each iteration
-                await objThis.TradedTokenContractMockInstance.correctPrices({ from: accountTen });
+                //await objThis.TradedTokenContractMockInstance.correctPrices({ from: accountTen });
+                // await objThis.TradedTokenContractMockInstance.sell({ from: accountTen });
+                // await objThis.TradedTokenContractMockInstance.buy({ from: accountTen });
                 
             }
             catch (e) {
