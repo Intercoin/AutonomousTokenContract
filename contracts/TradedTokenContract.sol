@@ -330,7 +330,7 @@ contract TradedTokenContract is
         if (_msgSender() == uniswapV2Pair) {
             
             bool shouldSell;
-            (shouldSell,,) = _shouldSell();
+            (shouldSell,,,) = __shouldSell();
             if (shouldSell == true) {
                 emit ShouldSell();
             }
@@ -340,7 +340,7 @@ contract TradedTokenContract is
         return success;
         
     }
-    
+
     /**
      * ERC777-transferFrom overroded
      */
@@ -364,7 +364,7 @@ contract TradedTokenContract is
         
         if (recipient == uniswapV2Pair) {
             bool shouldBuy;
-            (shouldBuy,,) = _shouldBuy();
+            (shouldBuy,,,) = __shouldBuy();
             if (shouldBuy == true) {
                 emit ShouldBuy();
             }
@@ -494,6 +494,7 @@ contract TradedTokenContract is
             block.timestamp
         );
         
+
         // IUniswapV2Pair(uniswapV2Pair).burn(address(0));
         if (transferTax.toBurn > 0) {
             IUniswapV2Pair(uniswapV2Pair).transfer(address(0), lpTokens.mul(transferTax.toBurn).div(100));
@@ -504,7 +505,7 @@ contract TradedTokenContract is
         for (uint256 i = 0 ; i< ownersList.length; i++) {
             IUniswapV2Pair(uniswapV2Pair).transfer(ownersList[i].addr, lpToSend.mul(ownersList[i].percent).div(100));
         }
-        
+
     }
     
     
@@ -672,7 +673,7 @@ contract TradedTokenContract is
     /**
      * buy back tokens from LP
      */
-    function buyTokenFromLP() private {
+    function buyTokenFromLP() internal {
         bool success;
         SyncAmounts memory syncAmounts;
         //CurrentPrices memory currentPrices;
@@ -701,7 +702,7 @@ contract TradedTokenContract is
     /**
      * sell tokens to LP
      */
-    function sellTokenToLP() internal {
+    function sellTokenToLP() internal  {
 
         // (
         //     uint256 tokensShouldToSell,
@@ -735,14 +736,15 @@ contract TradedTokenContract is
                 block.timestamp
             );
 
+
             uint256 amountReceived = amounts[amounts.length-1];
             emit ContractSellTokens(syncAmounts.token, amountReceived);
             
-            uint256 amountToken0 = amounts[amounts.length-1].mul(transferTax.toLiquidity).div(100);
+            uint256 amountToken0 = amountReceived.mul(transferTax.toLiquidity).div(100);
             uint256 amountToken1 = uint256(FixedPoint.decode144(FixedPoint.mul(currentPrices.sell, amountToken0)));
             
             ///-----
-            if (balanceOf(address(this)) >= amountToken1) {
+            if (balanceOf(address(this)) >= amountToken1 && address(this).balance > amountToken0) {
                 //            eth           token
                 addLiquidity(amountToken0, amountToken1);
                 
@@ -762,7 +764,6 @@ contract TradedTokenContract is
 
                 
             }
-            
             
         }
 
@@ -822,14 +823,7 @@ contract TradedTokenContract is
                         syncAmounts.token = sellTokenAmount;
                         syncAmounts.eth = _amountEth;
                         
-                        // update lastMaxSellPrice and buy price
-                        FixedPoint.uq112x112 memory fractionPercent;
                         
-                        fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
-                        lastMaxSellPrice._x = lastMaxSellPrice._x + fractionPercent._x;
-                          
-                        fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
-                        lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
                         
                         eventState = NeedToEmitEvent.None;
                         success = true;
@@ -867,6 +861,15 @@ contract TradedTokenContract is
         
         if (success == true) {
             // all ok
+            
+            // update lastMaxSellPrice and buy price
+            FixedPoint.uq112x112 memory fractionPercent;
+            
+            fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
+            lastMaxSellPrice._x = lastMaxSellPrice._x + fractionPercent._x;
+              
+            fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
+            lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
         } else {
             if (eventState == NeedToEmitEvent.NoAvailableReserves) {
                 emit NoAvailableReserves();
@@ -928,10 +931,6 @@ contract TradedTokenContract is
                 if ((address(this).balance) > syncAmounts.eth && syncAmounts.eth > 0) {
                     // all ok
                     
-                    // update buyPrice
-                    FixedPoint.uq112x112 memory fractionPercent = lastBuyPrice.muluq(FixedPoint.fraction(uint112(buyTax.priceDecreaseMin), uint112(100)));
-                    lastBuyPrice._x = lastBuyPrice._x - fractionPercent._x;
-                        
                     eventState = NeedToEmitEvent.None;
                     success = true;
                 } else {
@@ -964,6 +963,11 @@ contract TradedTokenContract is
         
         if (success == true) {
             // all ok
+            
+            // update buyPrice
+            FixedPoint.uq112x112 memory fractionPercent = lastBuyPrice.muluq(FixedPoint.fraction(uint112(buyTax.priceDecreaseMin), uint112(100)));
+            lastBuyPrice._x = lastBuyPrice._x - fractionPercent._x;
+                        
         } else {
             if (eventState == NeedToEmitEvent.NoAvailableReserves) {
                 emit NoAvailableReserves();
