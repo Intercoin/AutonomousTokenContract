@@ -2,7 +2,7 @@
 const BigNumber = require('bignumber.js');
 
 
-var transactionsArr;
+var transactionsArr = [];
 
 transactionsClear = () => {
     transactionsArr = [];

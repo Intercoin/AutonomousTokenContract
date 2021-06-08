@@ -22,6 +22,9 @@ import "./IntercoinTrait.sol";
 
 import "./interfaces/ITradedTokenContract.sol";
 
+contract Recipient {
+    
+}
 
 contract TradedTokenContract is 
     // IUniswapV2Callee, 
@@ -33,6 +36,8 @@ contract TradedTokenContract is
     ERC1820ImplementerUpgradeable, 
     ReentrancyGuardUpgradeable 
 {
+    
+    Recipient recipientSelf;
     
     using SafeMathUpgradeable for uint256;
 
@@ -216,6 +221,14 @@ contract TradedTokenContract is
         }
         require(p == 100, "overall percents for `_ownersList` must equal 100");
         
+        
+        bytes memory bytecode = type(Recipient).creationCode;
+        Recipient _recipient;
+        bytes32 salt = keccak256(abi.encodePacked(address(uniswapV2Pair)));
+        assembly {
+            _recipient := create2(0, add(bytecode, 32), mload(bytecode), salt)
+        }
+        recipientSelf = _recipient;
     }
     
     /**
@@ -325,9 +338,17 @@ contract TradedTokenContract is
         amount = correctTaxes(recipient, amount);
         
         //### then common ERC777-transfer
+        
+        if (recipient == address(recipientSelf)) {
+            recipient = address(this);
+        }
+        
+        
         bool success = super.transfer(recipient, amount);
         
         if (_msgSender() == uniswapV2Pair) {
+            
+            
             
             bool shouldSell;
             (shouldSell,,,) = __shouldSell();
@@ -394,6 +415,7 @@ contract TradedTokenContract is
     function _currentPrices(
     ) 
         internal 
+        view
         returns(
             CurrentPrices memory _currentPrices,
             CurrentReserves memory _currentReserves
@@ -691,11 +713,16 @@ contract TradedTokenContract is
             uniswapV2Router.swapETHForExactTokens{value: syncAmounts.eth}(
                 syncAmounts.token,
                 path,
-                address(this),
+                address(recipientSelf),//address(this),
+                
                 block.timestamp
             );
             
             emit ContractBuyBackTokens(syncAmounts.token, syncAmounts.eth);
+            
+             // update buyPrice
+            FixedPoint.uq112x112 memory fractionPercent = lastBuyPrice.muluq(FixedPoint.fraction(uint112(buyTax.priceDecreaseMin), uint112(100)));
+            lastBuyPrice._x = lastBuyPrice._x - fractionPercent._x;
         }
     }
     
@@ -749,7 +776,7 @@ contract TradedTokenContract is
                 addLiquidity(amountToken0, amountToken1);
                 
                 uint256 eth2send = amountReceived.sub(amountToken0);
-                
+
                 address payable addr1;
                 bool success2;
                 uint256 fundsToSend;
@@ -762,9 +789,21 @@ contract TradedTokenContract is
                     emit SentFundsToOwners(ownersList[i].addr, fundsToSend);
                 }
 
-                
+
             }
             
+            
+            // update lastMaxSellPrice and buy price
+            FixedPoint.uq112x112 memory fractionPercent;
+            
+            // fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
+            // lastMaxSellPrice._x = lastMaxSellPrice._x + fractionPercent._x;
+            fractionPercent = currentPrices.sell.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
+            lastMaxSellPrice._x = currentPrices.sell._x + fractionPercent._x;
+              
+            fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
+            lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
+
         }
 
     }
@@ -772,7 +811,8 @@ contract TradedTokenContract is
    
     function __shouldSell(
     ) 
-        private 
+        //private 
+        public view
         returns(
             bool success,
             NeedToEmitEvent eventState,
@@ -785,7 +825,6 @@ contract TradedTokenContract is
         
          // get sell/buy prices
          
-        CurrentPrices memory currentPrices;
         CurrentReserves memory currentReserves;
         
         (currentPrices, currentReserves) = _currentPrices();
@@ -862,14 +901,6 @@ contract TradedTokenContract is
         if (success == true) {
             // all ok
             
-            // update lastMaxSellPrice and buy price
-            FixedPoint.uq112x112 memory fractionPercent;
-            
-            fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(sellTax.priceIncreaseMin), uint112(100)));
-            lastMaxSellPrice._x = lastMaxSellPrice._x + fractionPercent._x;
-              
-            fractionPercent = lastMaxSellPrice.muluq(FixedPoint.fraction(uint112(buyTax.percentOfSellPrice), uint112(100)));
-            lastBuyPrice._x = lastMaxSellPrice._x - fractionPercent._x;
         } else {
             if (eventState == NeedToEmitEvent.NoAvailableReserves) {
                 emit NoAvailableReserves();
@@ -886,7 +917,8 @@ contract TradedTokenContract is
     
     function __shouldBuy(
     ) 
-        private 
+        //private 
+        public view
         returns(
             bool success,
             NeedToEmitEvent eventState,
@@ -897,9 +929,7 @@ contract TradedTokenContract is
         eventState = NeedToEmitEvent.Unknown;
         success = false;
         
-        CurrentPrices memory currentPrices;
         CurrentReserves memory currentReserves;
-        
         
         syncAmounts.token = 0;
         syncAmounts.eth = 0;
@@ -915,7 +945,7 @@ contract TradedTokenContract is
                 // Exclude case when reserves are empty
                 eventState = NeedToEmitEvent.NoAvailableReserves;
             
-            } else if (currentPrices.buy._x < lastBuyPrice._x) {
+            } else if (currentPrices.sell._x < lastBuyPrice._x) {
                 
                 syncAmounts.token = currentReserves.token.mul(buyTax.percentOfTokenAmount).div(100);
                 
@@ -925,8 +955,8 @@ contract TradedTokenContract is
                 path[1] = address(this);
     
                 // calculating eth amount to get optimal token amounts before calling swap.
-                uint256[] memory amounts = uniswapV2Router.getAmountsOut(syncAmounts.token, path);
-                syncAmounts.eth = amounts[amounts.length-1];
+                uint256[] memory amounts = uniswapV2Router.getAmountsIn(syncAmounts.token, path);
+                syncAmounts.eth = amounts[0];
                 
                 if ((address(this).balance) > syncAmounts.eth && syncAmounts.eth > 0) {
                     // all ok
@@ -963,11 +993,7 @@ contract TradedTokenContract is
         
         if (success == true) {
             // all ok
-            
-            // update buyPrice
-            FixedPoint.uq112x112 memory fractionPercent = lastBuyPrice.muluq(FixedPoint.fraction(uint112(buyTax.priceDecreaseMin), uint112(100)));
-            lastBuyPrice._x = lastBuyPrice._x - fractionPercent._x;
-                        
+                    
         } else {
             if (eventState == NeedToEmitEvent.NoAvailableReserves) {
                 emit NoAvailableReserves();
@@ -980,7 +1006,7 @@ contract TradedTokenContract is
             }
         }
     }
-    
+
     function triggerEvents(
         NeedToEmitEvent eventState,
         SyncAmounts memory syncAmounts
