@@ -11,6 +11,7 @@ const uniswapPair = artifacts.require("IUniswapV2Pair");
 const IERC20Upgradeable = artifacts.require("IERC20Upgradeable");
 
 
+
 const truffleAssert = require('truffle-assertions');
 const helper = require("../helpers/truffleTestHelper");
 
@@ -20,7 +21,7 @@ const helperCommon = require("../helpers/common");
 //require('@openzeppelin/test-helpers/configure')({ web3 });
 const { singletons } = require('@openzeppelin/test-helpers');
 
-const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades');
+//const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades');
 
     
 contract('TradedTokenContract and PancakeSwap', (accounts) => {
@@ -74,7 +75,7 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
 
 
     // temp vars used at compare status and variables
-    let tmp, tmpBool, tmpBool2, tmpBalance, tmpCounter, trTmp;
+    let tmp, tmp1, tmp2, tmpBool, tmpBool2, tmpBalance, tmpCounter, trTmp;
 
 
     async function statsView(objThis) {
@@ -122,23 +123,37 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
 
 
     var TransferRulesInstance;
-    /* */
+    
     beforeEach(async () => {
-        erc1820 = await singletons.ERC1820Registry(accountNine);
-      
+        
 
+        erc1820 = await singletons.ERC1820Registry(accountNine);
+        
+        // let WNBInstance = await WBNB.new({ from: accountTen });
+        // let UniswapV2FactoryMockInstance = await UniswapV2FactoryMock.new(accountNine, { from: accountTen });
+        
+        // let UniswapV2Router02MockInstance = await UniswapV2Router02Mock.new(UniswapV2FactoryMockInstance.address, WNBInstance.address,{ from: accountTen });
+        
+        
 
         //TransferRulesInstance = await deployProxy(TransferRulesMock);
         this.TransferRulesInstance = await TransferRulesMock.new({ from: accountTen });
         await this.TransferRulesInstance.init({ from: accountTen });
 
         this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({ from: accountTen });
-        
+        // await this.TradedTokenContractMockInstance.setupNetworkSettings(
+        //     UniswapV2FactoryMockInstance.address, 
+        //     WNBInstance.address, { from: accountTen }
+        // );
+
         await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
         
         await this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + (new BN(150e18.toString())).toString(16) });
+
+        
         await this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
         
+//this.TradedTokenContractMockInstance.getPastEvents("Transfer", { fromBlock: '0x0' }).then((events) => console.log(events));
 
         let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
         let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();
@@ -160,8 +175,10 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
 
     });
     
+    
+  
     it('simulation', async () => {
-
+        
         var objThis = this;
 
         await statsView(objThis);
@@ -171,7 +188,7 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         
         let ITRContractBalanceBefore = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
 
-        let iterationCounts = 60,
+        let iterationCounts = 20,
             errorsHappened = 0,
             shouldSellCounts = 0,
             shouldBuyCounts = 0,
@@ -188,9 +205,11 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         
         function toStr(element) {
           return element.toString();
-        }       
-
-//objThis.TradedTokenContractMockInstance.getPastEvents("Transfer", { fromBlock: '0x0' }).then((events) => console.log('Transfer happens'));
+        }
+        
+        objThis.TradedTokenContractMockInstance.getPastEvents("Transfer", { fromBlock: '0x0' }).then((events) => console.log('Hasppens'));
+objThis.TradedTokenContractMockInstance.getPastEvents("ShouldSell", { fromBlock: '0x0' }).then((events) => console.log(events));
+objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: '0x0' }).then((events) => console.log(events));
 
 
         while (i < iterationCounts) {
@@ -295,9 +314,11 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
                 // try to correct price externally after each iteration
                 //await objThis.TradedTokenContractMockInstance.correctPrices({ from: accountTen });
                 
-                tmp = (await objThis.TradedTokenContractMockInstance.__shouldSell());
-                console.log('__shouldSell=', tmp[0].toString() );
-                if (tmp[0] == true) {
+                tmp1 = (await objThis.TradedTokenContractMockInstance.shouldSell());
+                tmp2 = (await objThis.TradedTokenContractMockInstance.shouldBuy());
+                
+                console.log('__shouldSell=', tmp1[0].toString() );
+                if (tmp1[0] == true) {
                     shouldSellCounts++;
                     console.log("--  try to sell --");
                     await objThis.TradedTokenContractMockInstance.sell({ from: accountTen });
@@ -316,9 +337,9 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
                     console.log("--  no need to sell --");
                 }
                 
-                tmp = (await objThis.TradedTokenContractMockInstance.__shouldBuy());
-                console.log('__shouldBuy=', tmp[0].toString() );
-                if (tmp[0] == true) {
+                
+                console.log('__shouldBuy=', tmp2[0].toString() );
+                if (tmp2[0] == true) {
                     shouldBuyCounts++;
                     console.log("--  try to buy --");
                     await objThis.TradedTokenContractMockInstance.buy({ from: accountTen });
@@ -386,10 +407,12 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         // console.log('ITRContractBalanceAfter =', ITRContractBalanceAfter.toString());
         
         //console.log('getLogs=', (await objThis.TradedTokenContractMockInstance.getLogs()).toString());
-        console.log('getT=', (await objThis.TradedTokenContractMockInstance.getT()).toString());
-        
+        //console.log('getT=', (await objThis.TradedTokenContractMockInstance.getT()).toString());
+
+
+      
     });
-    
+
     //if need to view transaction cost consuming while tests
     /*
     it('summary transactions cost', async () => {

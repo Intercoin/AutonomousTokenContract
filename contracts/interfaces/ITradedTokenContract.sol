@@ -82,8 +82,8 @@ interface ITradedTokenContract {
         uint256 tokensIntoLiqudity
     );
     
-    event SentFundsToOwners(address indexed to, uint256 amount);
-    event SentBonusToInviter(address indexed to, uint256 amount);
+    event SentFundToOwner(address to, uint256 amount);
+    event SentBonusToInviter(address to, uint256 amount);
     event Received(address sender, uint amount);
     
     event NotEnoughTokenToSell(uint256 amount);

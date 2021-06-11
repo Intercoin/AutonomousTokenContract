@@ -12,13 +12,9 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 //import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Callee.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
-//import "@uniswap/lib/contracts/libraries/FixedPoint.sol";
-
-//import "./libs/FixedPoint.sol";
 
 import "./interfaces/ITransferRules.sol";
 import "./IntercoinTrait.sol";
-
 
 import "./interfaces/ITradedTokenContract.sol";
 
@@ -158,13 +154,16 @@ contract TradedTokenContract is
         override
         initializer 
     {
+
         // get Uniswap/Pancake contracts addresses
         (uniswapRouter, uniswapRouterFactory) = networkSettings();
 
         // init sub contracts
         __ReentrancyGuard_init();
         __Ownable_init();
-        __ERC777_init(name, symbol, defaultOperators);
+
+       __ERC777_init(name, symbol, defaultOperators);
+
         __ERC1820Implementer_init();
         
         // erc1820
@@ -229,6 +228,7 @@ contract TradedTokenContract is
             _recipient := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         recipientSelf = _recipient;
+
     }
     
     /**
@@ -475,7 +475,6 @@ contract TradedTokenContract is
             address _uniswapRouterFactory
         ) 
     {
-        
         if (block.chainid == 1 || block.chainid == 3 || block.chainid == 4) {
             // Ethereum all networks
             _uniswapRouter = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
@@ -491,7 +490,6 @@ contract TradedTokenContract is
         } else {
             revert("Chain does not supported");
         }
-    
     }
     
     /**
@@ -645,7 +643,6 @@ contract TradedTokenContract is
                 
                 uint256 p = recentTransfer[_msgSender()].sentPercent.add(amount.mul(100).div(recentTransfer[_msgSender()].balance));
                 
-                // TODO:1 (pt-pf) can be<0 ?
                 uint256 taxP = p < pf ? 0 : (p.add(sp)).div(2).sub(pf).div(pt.sub(pf)).mul(transferTax.total);
                 recentTransfer[_msgSender()].sentPercent = p;
                 
@@ -695,7 +692,10 @@ contract TradedTokenContract is
     /**
      * buy back tokens from LP
      */
-    function buyTokenFromLP() internal {
+    function buyTokenFromLP(
+    ) 
+        internal 
+    {
         bool success;
         SyncAmounts memory syncAmounts;
         //CurrentPrices memory currentPrices;
@@ -729,7 +729,10 @@ contract TradedTokenContract is
     /**
      * sell tokens to LP
      */
-    function sellTokenToLP() internal  {
+    function sellTokenToLP(
+    ) 
+        internal  
+    {
 
         // (
         //     uint256 tokensShouldToSell,
@@ -786,7 +789,7 @@ contract TradedTokenContract is
                     (success2, ) = addr1.call{value: fundsToSend}("");
                     // success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
                     require(success2 == true, 'Transfer ether was failed'); 
-                    emit SentFundsToOwners(ownersList[i].addr, fundsToSend);
+                    emit SentFundToOwner(ownersList[i].addr, fundsToSend);
                 }
 
 
@@ -811,8 +814,8 @@ contract TradedTokenContract is
    
     function __shouldSell(
     ) 
-        //private 
-        public view
+        internal 
+        view
         returns(
             bool success,
             NeedToEmitEvent eventState,
@@ -885,7 +888,7 @@ contract TradedTokenContract is
      */
     function _shouldSell(
     ) 
-        private 
+        internal 
         returns(
             bool success,
             SyncAmounts memory syncAmounts,
@@ -917,8 +920,8 @@ contract TradedTokenContract is
     
     function __shouldBuy(
     ) 
-        //private 
-        public view
+        internal 
+        view
         returns(
             bool success,
             NeedToEmitEvent eventState,
@@ -976,7 +979,7 @@ contract TradedTokenContract is
      */
     function _shouldBuy(
     ) 
-        private 
+        internal 
         returns(
             bool success,
             SyncAmounts memory syncAmounts,
