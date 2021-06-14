@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../libs/FixedPoint.sol";
+
 interface ITradedTokenContract {
+    
     struct SellTax {
-        uint256 tokenAmount; // times to divide
+        uint256 percentOfTokenAmount; // times to divide
         uint256 priceIncreaseMin;
         uint256 slippage;
     }
     
     struct BuyTax {
-        uint256 tokenAmount;
+        uint256 percentOfTokenAmount;
         uint256 priceDecreaseMin;
         uint256 slippage;
         uint256 percentOfSellPrice;
@@ -35,6 +38,28 @@ interface ITradedTokenContract {
         uint256 amount;
     }
     
+    struct RecentStruct {
+        uint256 sentPercent;
+        uint256 balance;
+        uint256 timestamp;
+        bool exists;
+    }
+    
+    struct SyncAmounts {
+        uint256 token;
+        uint256 eth;
+    }
+    
+    struct CurrentPrices {
+        FixedPoint.uq112x112 sell;
+        FixedPoint.uq112x112 buy;
+    }
+    
+    struct CurrentReserves {
+        uint256 token;
+        uint256 eth;
+    }
+    
     //function setInitialPrice(uint256 price) external;
     function initialize(
         string memory name, 
@@ -48,5 +73,41 @@ interface ITradedTokenContract {
         OwnersList[] memory _ownersList
     ) external;
     
+    event RulesUpdated(address rules);
+
+    event SwapAndLiquifyEnabledUpdated(bool enabled);
+    event SwapAndLiquify(
+        uint256 tokensSwapped,
+        uint256 ethReceived,
+        uint256 tokensIntoLiqudity
+    );
     
+    event SentFundToOwner(address to, uint256 amount);
+    event SentBonusToInviter(address to, uint256 amount);
+    event Received(address sender, uint amount);
+    
+    event NotEnoughTokenToSell(uint256 amount);
+    event NotEnoughETHToBuyTokens(uint256 amount);
+    event NoAvailableReserves();
+    event NoAvailableReserveToken();
+    event NoAvailableReserveETH();
+    
+    event ContractSellTokens(uint256 amount, uint256 eth);
+    event ContractBuyBackTokens(uint256 amount, uint256 eth);
+    
+    // emitted events when contract should to sell or to buy tokens from/to LP
+    event ShouldSell();
+    event ShouldBuy();
+    
+    
+    enum NeedToEmitEvent { 
+        None,
+        Unknown,
+        ShouldSell,
+        ShouldBuy,
+        NoAvailableReserves,
+        NoAvailableReserveETH,
+        NotEnoughTokenToSell,
+        NotEnoughETHToBuyTokens
+    }
 }
