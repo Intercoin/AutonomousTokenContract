@@ -65,7 +65,7 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
     
     var transfer = [0, 10, 0];
     var progressive = [5, 100, 3600];
-    var ownersList = [[accountNine, 60], [accountTen, 40]];
+    var disbursementList = [[accountNine, 60], [accountTen, 40]];
 
     const duration1Day = 86_400;       // 1 year
     const durationLockupUSAPerson = 31_536_000;       // 1 year
@@ -148,7 +148,7 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         //     WNBInstance.address, { from: accountTen }
         // );
 
-        await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, presalePrice, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
+        await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, presalePrice, predefinedBalances, buyTax, sellTax, transfer, progressive, disbursementList, { from: accountTen });
         
         await this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + (new BN(150e18.toString())).toString(16) });
 

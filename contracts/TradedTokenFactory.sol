@@ -26,7 +26,7 @@ contract TradedTokenFactory is OwnableUpgradeable, ReentrancyGuardUpgradeable {
         ITradedTokenContract.SellTax memory _sellTax,
         ITradedTokenContract.TransferTax memory _transfer,
         ITradedTokenContract.ProgressiveTax memory _progressive,
-        ITradedTokenContract.OwnersList[] memory _ownersList
+        ITradedTokenContract.DisbursementList[] memory _disbursementList
     ) 
         public 
         nonReentrant
@@ -45,7 +45,7 @@ contract TradedTokenFactory is OwnableUpgradeable, ReentrancyGuardUpgradeable {
             _sellTax,
             _transfer,
             _progressive,
-            _ownersList
+            _disbursementList
             );
 
         emit Produced(msg.sender, proxy);

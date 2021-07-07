@@ -108,7 +108,7 @@ _buyTax|<a href="#buytax">tuple</a>| buy settings -  [percentOfTokenAmount, pric
 _sellTax|<a href="#selltax">tuple</a>| sell settings -  [percentOfTokenAmount, priceIncreaseMin, slippage]. Default are [0, 10, 10]
 _transferTax|<a href="#transfertax">tuple</a>| transfer settings - [total, toLiquidity, toBurn]. Default are [0, 10, 0] 
 _progressiveTax|<a href="#progressivetax">tuple</a>| progressive settings - [from, to, duration]. Default are [5, 100, 3600]
-_ownersList|<a href="#ownerslist">tuple</a>[]|array of tuples like [owner address, percent]. sum of percents require to be 100%
+_disbursementList|<a href="#disbursementList">tuple</a>[]|array of tuples like [address, percent]. sum of percents require to be 100%
         
 #### startPool
 Params:
@@ -182,12 +182,13 @@ from|uint256| percent
 to|uint256| percent
 duration|uint256| progressive tax  can be applied to user by this duration
 
-#### OwnersList
+#### DisbursementList
 Params:
 name  | type | description
 --|--|--
 addr|address| address
 percent|uint256| percent [1;100]
+
 ## Events
 
 <table>
@@ -215,8 +216,8 @@ percent|uint256| percent [1;100]
 		<td>when inviter get some bonus</td>
 	</tr>
 	<tr>
-		<td>SentFundToOwner</td>
-		<td>when person of owner list get some fudns</td>
+		<td>SentDisbursements</td>
+		<td>emitted after all disbursements were sent </td>
 	</tr>
 	<tr>
 		<td>Received</td>

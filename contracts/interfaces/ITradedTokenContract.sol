@@ -28,7 +28,7 @@ interface ITradedTokenContract {
         uint256 to;
         uint256 duration;
     }
-    struct OwnersList {
+    struct DisbursementList {
         address addr;
         uint256 percent;
     }
@@ -71,7 +71,7 @@ interface ITradedTokenContract {
         SellTax memory _sellTax,
         TransferTax memory _transfer,
         ProgressiveTax memory _progressive,
-        OwnersList[] memory _ownersList
+        DisbursementList[] memory _disbursementList
     ) external;
     
     event RulesUpdated(address rules);
@@ -83,7 +83,9 @@ interface ITradedTokenContract {
         uint256 tokensIntoLiqudity
     );
     
-    event SentFundToOwner(address to, uint256 amount);
+    //event SentDisbursement(address to, uint256 amount);
+    event SentDisbursements();
+    
     event SentBonusToInviter(address to, uint256 amount);
     event Received(address sender, uint amount);
     

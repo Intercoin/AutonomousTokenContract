@@ -64,8 +64,8 @@ contract TradedTokenContract is
     FixedPoint.uq112x112 internal lastMaxSellPrice;
     FixedPoint.uq112x112 internal lastBuyPrice;
     
-    // predefine owners addresses
-    OwnersList[] ownersList;
+    // predefine list addresses for disbursements
+    DisbursementList[] disbursementList;
     
     mapping (address => address) invitedBy;
     
@@ -153,7 +153,7 @@ contract TradedTokenContract is
      * @param _sellTax params that applied when contract will sell own tokens to LP
      * @param _transferTax params that applied when accounts transfer tokens to each others
      * @param _progressiveTax progressive taxes
-     * @param _ownersList owners list
+     * @param _disbursementList disbursement list
      */
     function initialize(
         string memory name, 
@@ -165,7 +165,7 @@ contract TradedTokenContract is
         SellTax memory _sellTax,
         TransferTax memory _transferTax,
         ProgressiveTax memory _progressiveTax,
-        OwnersList[] memory _ownersList
+        DisbursementList[] memory _disbursementList
     ) 
         public 
         virtual 
@@ -236,11 +236,11 @@ contract TradedTokenContract is
         
         // proportions (array of percentages which must add up to 100)
         uint256 p = 0;
-        for (uint256 i=0; i<_ownersList.length; i++) {
-            ownersList.push(_ownersList[i]);
-            p = p.add(_ownersList[i].percent);
+        for (uint256 i=0; i<_disbursementList.length; i++) {
+            disbursementList.push(_disbursementList[i]);
+            p = p.add(_disbursementList[i].percent);
         }
-        require(p == 100, "overall percents for `_ownersList` must equal 100");
+        require(p == 100, "overall percents for `_disbursementList` must equal 100");
         
         
         bytes memory bytecode = type(Recipient).creationCode;
@@ -544,8 +544,8 @@ contract TradedTokenContract is
         
         uint256 lpToSend = lpTokens.sub(lpTokens.mul(transferTax.toBurn).div(100));
 
-        for (uint256 i = 0 ; i< ownersList.length; i++) {
-            IUniswapV2Pair(uniswapV2Pair).transfer(ownersList[i].addr, lpToSend.mul(ownersList[i].percent).div(100));
+        for (uint256 i = 0 ; i< disbursementList.length; i++) {
+            IUniswapV2Pair(uniswapV2Pair).transfer(disbursementList[i].addr, lpToSend.mul(disbursementList[i].percent).div(100));
         }
 
     }
@@ -805,15 +805,15 @@ contract TradedTokenContract is
                 address payable addr1;
                 bool success2;
                 uint256 fundsToSend;
-                for (uint256 i = 0 ; i< ownersList.length; i++) {
-                    addr1 = payable(ownersList[i].addr); // correct since Solidity >= 0.6.0
-                    fundsToSend = eth2send.mul(ownersList[i].percent).div(100);
+                for (uint256 i = 0 ; i< disbursementList.length; i++) {
+                    addr1 = payable(disbursementList[i].addr); // correct since Solidity >= 0.6.0
+                    fundsToSend = eth2send.mul(disbursementList[i].percent).div(100);
                     (success2, ) = addr1.call{value: fundsToSend}("");
                     // success2 = addr1.send(eth2send.mul(100).div(ownersList[i].percent));
                     require(success2 == true, 'Transfer ether was failed'); 
-                    emit SentFundToOwner(ownersList[i].addr, fundsToSend);
+                    //emit SentDisbursement(ownersList[i].addr, fundsToSend);
                 }
-
+                emit SentDisbursements();
 
             }
             
