@@ -220,8 +220,8 @@ percent|uint256| percent [1;100]
 		<td>emitted after all disbursements were sent </td>
 	</tr>
 	<tr>
-		<td>Received</td>
-		<td>when contract get ETH </td>
+		<td>PresaleBuy</td>
+		<td>when contract recieve coins and return tokens in presale period</td>
 	</tr>
 	<tr>
 		<td>NotEnoughTokenToSell</td>

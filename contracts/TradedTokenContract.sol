@@ -94,7 +94,7 @@ contract TradedTokenContract is
    
     //to recieve ETH from uniswapV2Router when swaping or anyone in presale period
     receive() external payable {
-        emit Received(msg.sender, msg.value);
+        
         
         if (_msgSender() == address(uniswapV2Router)) {
             //to recieve ETH from uniswapV2Router when swaping
@@ -105,6 +105,8 @@ contract TradedTokenContract is
             require(msg.value != 0, 'Sent funds are insufficient');    
             uint256 tokenAmount = (msg.value).mul(1e9).div(presalePrice);
             require(tokenAmount <= balanceOf(address(this)), 'Balance is not enough');
+            
+            emit PresaleBuy(msg.sender, msg.value, tokenAmount);
             _send(address(this), msg.sender, tokenAmount, "", "", false);
             
         }

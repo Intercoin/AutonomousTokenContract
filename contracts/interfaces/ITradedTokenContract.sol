@@ -87,7 +87,7 @@ interface ITradedTokenContract {
     event SentDisbursements();
     
     event SentBonusToInviter(address to, uint256 amount);
-    event Received(address sender, uint amount);
+    event PresaleBuy(address sender, uint eth, uint256 token);
     
     event NotEnoughTokenToSell(uint256 amount);
     event NotEnoughETHToBuyTokens(uint256 amount);
