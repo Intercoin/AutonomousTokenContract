@@ -45,6 +45,8 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
     const name = 'ITR Token TEST';
     const symbol = 'ITRT';
     const defaultOperators = [];
+    var presalePrice = 100000;
+    var poolPrice = 100000;
     const predefinedBalances = [];
 
     
@@ -146,12 +148,12 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         //     WNBInstance.address, { from: accountTen }
         // );
 
-        await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
+        await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, presalePrice, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
         
         await this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + (new BN(150e18.toString())).toString(16) });
 
         
-        await this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
+        await this.TradedTokenContractMockInstance.startPool(poolPrice, { from: accountTen });
         
 //this.TradedTokenContractMockInstance.getPastEvents("Transfer", { fromBlock: '0x0' }).then((events) => console.log(events));
 
@@ -426,11 +428,11 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
 
         this.TradedTokenContractMockInstance = await TradedTokenContractMock.new({ from: accountTen });
         helperCostEth.transactionPush(this.TradedTokenContractMockInstance, 'TradedTokenContractMock::new');
-        trTmp = await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
+        trTmp = await this.TradedTokenContractMockInstance.initialize(name, symbol, defaultOperators, presalePrice, predefinedBalances, buyTax, sellTax, transfer, progressive, ownersList, { from: accountTen });
         helperCostEth.transactionPush(trTmp, 'TradedTokenContractMock::initialize');        
         await this.TradedTokenContractMockInstance.donateETH({ from: accountTen, value: '0x' + (new BN(150e18.toString())).toString(16) });
-        trTmp = await this.TradedTokenContractMockInstance.setInitialPrice(100000, { from: accountTen });
-        helperCostEth.transactionPush(trTmp, 'TradedTokenContractMock::setInitialPrice');        
+        trTmp = await this.TradedTokenContractMockInstance.startPool(poolPrice, { from: accountTen });
+        helperCostEth.transactionPush(trTmp, 'TradedTokenContractMock::startPool');        
 
         let uniswapV2RouterAddr = await this.TradedTokenContractMockInstance.uniswapV2Router();
         let uniswapV2PairAddr = await this.TradedTokenContractMockInstance.uniswapV2Pair();

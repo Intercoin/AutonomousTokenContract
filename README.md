@@ -62,9 +62,9 @@ Once installed will be use methods:
 		<td>initialize a contract</td>
 	</tr>
 	<tr>
-		<td><a href="#setinitialprice">setInitialPrice</a></td>
+		<td><a href="#startpool">startPool</a></td>
 		<td>owner</td>
-		<td>set initial price. can be caaled only once</td>
+		<td>starting pool with initial price. can be called only once</td>
 	</tr>
 	<tr>
 		<td><a href="#updaterestrictionsandrules">_updateRestrictionsAndRules</a></td>
@@ -102,6 +102,7 @@ name  | type | description
 name|string| ERC777 token's name 
 symbol|string| ERC777 token's symbol 
 defaultOperators|address[]| ERC777 token's defaultOperators 
+_presalePrice|uint256|fixed price(presale Price) to exchange coins to tokens. it's actual before owner call startPool
 _predefinedBalances|<a href="#bulkstruct">tuple</a>[]| array of tuples like [address,amount] of user balances that need to be predefined 
 _buyTax|<a href="#buytax">tuple</a>| buy settings -  [percentOfTokenAmount, priceDecreaseMin, slippage, percentOfSellPrice]. Default are [0, 10, 10, 0]
 _sellTax|<a href="#selltax">tuple</a>| sell settings -  [percentOfTokenAmount, priceIncreaseMin, slippage]. Default are [0, 10, 10]
@@ -109,7 +110,7 @@ _transferTax|<a href="#transfertax">tuple</a>| transfer settings - [total, toLiq
 _progressiveTax|<a href="#progressivetax">tuple</a>| progressive settings - [from, to, duration]. Default are [5, 100, 3600]
 _ownersList|<a href="#ownerslist">tuple</a>[]|array of tuples like [owner address, percent]. sum of percents require to be 100%
         
-#### setInitialPrice
+#### startPool
 Params:
 name  | type | description
 --|--|--
@@ -265,7 +266,7 @@ After deploy owner need:
 - [optionally] if need to activate Transfer Rules regulation:
 -- to deploy TransferRules contract (or get exist address)
 -- to call method <a href="#updaterestrictionsandrules">_updateRestrictionsAndRules</a> to link our token with Transfer Rules contract.
-- to send to contract some coins(eth or bnb) and call method <a href="#setinitialprice">setInitialPrice</a> to add to liquidity pool all contract's coins and calculated tokens amount via transferred price as param
+- to send to contract some coins(eth or bnb) and get tokens by presale price and then call method <a href="#startpool">startPool</a> to add to liquidity pool all contract's coins and calculated tokens amount via transferred price as param
 - at last owner should call `renounceOwnership` to show that contract does not own him
 now any person can use pancakeSwap to exchange his coins to our tokens and vice versa
 - [periodically] need to call <a href="#sell">sell</a> or <a href="#buy">buy</a> to smooth out prices. Logic described at <a href="https://github.com/Intercoin/TradedTokenContract/issues/6">issues-6</a>

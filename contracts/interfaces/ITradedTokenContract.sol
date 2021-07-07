@@ -65,6 +65,7 @@ interface ITradedTokenContract {
         string memory name, 
         string memory symbol, 
         address[] memory defaultOperators, 
+        uint256 _presalePrice,
         BulkStruct[] memory _predefinedBalances,
         BuyTax memory _buyTax,
         SellTax memory _sellTax,

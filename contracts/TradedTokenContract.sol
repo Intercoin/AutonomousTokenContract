@@ -64,8 +64,6 @@ contract TradedTokenContract is
     FixedPoint.uq112x112 internal lastMaxSellPrice;
     FixedPoint.uq112x112 internal lastBuyPrice;
     
-    bool initialPriceAlreadySet;
-    
     // predefine owners addresses
     OwnersList[] ownersList;
     
@@ -79,22 +77,40 @@ contract TradedTokenContract is
     SellTax sellTax;
     BuyTax buyTax;
     
+    bool preSale;
+    uint256 presalePrice;
+    
+    modifier startingPool {
+        require(preSale == true, "Can be called only in presale period");
+        preSale = false;
+        _;
+    }
+    
     modifier lockTheSwap {
         inSwapAndLiquify = true;
         _;
         inSwapAndLiquify = false;
     }
-    
-    modifier initialPriceSet() {
-        require(initialPriceAlreadySet == false, "Initial price has already set");
-        initialPriceAlreadySet = true;
-        _;
-    }
-    
-    //to recieve ETH from uniswapV2Router when swaping
+   
+    //to recieve ETH from uniswapV2Router when swaping or anyone in presale period
     receive() external payable {
         emit Received(msg.sender, msg.value);
+        
+        if (_msgSender() == address(uniswapV2Router)) {
+            //to recieve ETH from uniswapV2Router when swaping
+        } else {
+            
+            require(preSale == true, "Presale period are over");
+            
+            require(msg.value != 0, 'Sent funds are insufficient');    
+            uint256 tokenAmount = (msg.value).mul(1e9).div(presalePrice);
+            require(tokenAmount <= balanceOf(address(this)), 'Balance is not enough');
+            _send(address(this), msg.sender, tokenAmount, "", "", false);
+            
+        }
+        
     }
+    
     
     /*IERC777RecipientUpgradeable*/
     function tokensReceived(
@@ -131,6 +147,7 @@ contract TradedTokenContract is
      * @param name token name
      * @param symbol token symbol
      * @param defaultOperators default operators
+     * @param _presalePrice price that can be used in presale period
      * @param _predefinedBalances balances that can be predefined to some accounts and substructed from general totalSupply
      * @param _buyTax params that applied when contract will buyback own tokens from LP
      * @param _sellTax params that applied when contract will sell own tokens to LP
@@ -140,8 +157,9 @@ contract TradedTokenContract is
      */
     function initialize(
         string memory name, 
-        string memory symbol, 
+        string memory symbol,
         address[] memory defaultOperators,
+        uint256 _presalePrice,
         BulkStruct[] memory _predefinedBalances,
         BuyTax memory _buyTax,
         SellTax memory _sellTax,
@@ -173,6 +191,10 @@ contract TradedTokenContract is
         uint256 totalSupply = 1_000_000_000 * 10 ** 18;
         uint256 tokensLeft = totalSupply;
         lastMaxSellPrice._x = 0;
+        
+        preSale = true;
+        presalePrice = _presalePrice;
+        require(_presalePrice > 0, "Presale price should be more than zero");
         
         // predefine balances
         for (uint256 i = 0; i < _predefinedBalances.length; i++) {
@@ -235,12 +257,12 @@ contract TradedTokenContract is
      * @param price initial price 1 eth token mul by 1e9
      * called only once
      */
-    function setInitialPrice(
+    function startPool(
         uint256 price
     ) 
         public 
         onlyOwner 
-        initialPriceSet()
+        startingPool()
     {
         uint256 ethAmount = address(this).balance;
         require(ethAmount != 0, 'balance is empty');
