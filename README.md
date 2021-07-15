@@ -1,48 +1,51 @@
 # TradedTokenContact
-Contract for issuing tokens to be sold to others, and traded on exchanges.
+Autonomous contract that issues and manages tokens to be traded on exchanges, and transferred between users. The approach behind its design is to be radically [decentralized and autonomous](https://en.wikipedia.org/wiki/Decentralized_autonomous_organization). Unlike most crypto projects, the initial team and early investors do not sell any pre-minted tokens into the marketplace. Rather, the contract itself mints and sells the tokens, organizes buybacks and manages their transfers according to predetermined rules  and parameters which can be easily conveyed to end-users. Proceeds from the sales can be shared with the team and early investors, who may hold other tokens that were used to raise funds for the project. The contract continues to operate into the future, regardless of any activities by any off-chain teams, companies, foundations or organizations.
+
+The team 
 
 ## About
 
-### :whale: Incentives for Long Term Holds and Relationships
 
-* No tax on buying, or transferring small amounts
-* Progressive tax on transferring larger % of balance in a given time period
-
-### :rocket: Dispensing new tokens only at All-Time-Highs
-
-* All tokens are sold into circulation by the contract
-* Sold only when price is already at the all-time-high
-* Additional tokens enter circulation only when 
-demanded by the market
-
-### :dollar: Buybacks to Counter Dumping by Whales
-
-* Proceeds from sales go to liquidity (10%), buybacks (20%) and disbursements (70%)
-* When price falls below threshold, contract buys back tokens and takes them out of circulation
-* Dumping by whales leads to smaller token supply, pushing the price back up
-
-### :lock: Locked Liquidity Proves No Rug-Pulls Guaranteed
-
-* Automatically adds liquidity from sales and transaction taxes
-* Specify percentage of LP tokens to burn by the contract
-
-### :fire: Options to Deflate Currency Supply
-
-* Taxes can remove tokens from circulation
-* Taxes can be distributed to liquidity
-* Taxes can be used to pay referral fees to the account who invited you, incentivizing people to invite others
-
-### :credit_card: Disbursing the proceeds
-
-* Contract sells the tokens, never dumping.
-* Disburses shares of proceeds to one or more addresses.
-* Those addresses can be smart contracts that handle disbursements to the original team and investors, or for discounts to certain groups.
-
-### :people_holding_hands: Power to the People
+### :fist: Power to the People
 
 * The tokens wind up in the hands of the community
 * Encourages investment, stability and growth
 * Penalizes dumping and eliminates rugpulls
+
+### :dollar: Incentives for Long Term Holds, Relationships and Utility
+
+* No tax on buying, or users transferring small amounts of their balance per day
+* Progressive tax on transferring larger % of balance in a given time period
+* Designed to discourage day traders and counteract whales dumping the tokens
+
+### :rocket: Selling Tokens into the Marketplace and Distributing Profits
+
+* All tokens are placed into liquidity at launch by the smart contract
+* As users buy up the token, contract removes some liquidity without affecting price
+* ETH from removed liquidity is set aside for buybacks (70%) and the rest disbursed to investors (30%)
+
+### :whale: Buybacks to Counter Dumping by Whales
+
+* During sell-offs, the contract can buy back the tokens and take them out of circulation
+* This leads to a smaller token supply, pushing the price up even more
+* With some configurations, the contract can even guarantee the price will never go down
+
+### :lock: Smart Contract Holds Liquidity: Will Never Rug Pull
+
+* The liquidity pool tokens are owned by the smart contract
+* Everyone can be confident that the smart contract will never "rug pull" the liquidity
+* Team and early investors cannot dump the tokens onto the market
+
+### :fire: Options for Hyper-Deflation or Rewards for Viral Referrals
+
+* Taxes can remove tokens from circulation
+* Taxes can be used to pay referral fees to the account who invited you, incentivizing people to invite others
+
+### :credit_card: Disbursing the proceeds
+
+* Contract buys and the tokens in a completely predictable manner.
+* Disburses shares of proceeds to one or more addresses.
+* Those addresses can be smart contracts that handle disbursements to the original team and investors, or for discounts to certain groups.
 
 ## Overview
 Once installed will be use methods:
