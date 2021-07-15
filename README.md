@@ -1,8 +1,6 @@
 # TradedTokenContact
 Autonomous contract that issues and manages tokens to be traded on exchanges, and transferred between users. The approach behind its design is to be radically [decentralized and autonomous](https://en.wikipedia.org/wiki/Decentralized_autonomous_organization). Unlike most crypto projects, the initial team and early investors do not sell any pre-minted tokens into the marketplace. Rather, the contract itself mints and sells the tokens, organizes buybacks and manages their transfers according to predetermined rules  and parameters which can be easily conveyed to end-users. Proceeds from the sales can be shared with the team and early investors, who may hold other tokens that were used to raise funds for the project. The contract continues to operate into the future, regardless of any activities by any off-chain teams, companies, foundations or organizations.
 
-The team 
-
 ## About
 
 
