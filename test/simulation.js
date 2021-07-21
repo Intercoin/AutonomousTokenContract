@@ -1,6 +1,7 @@
-//const BigNumber = require('bignumber.js');
+const BigNumber = require('bignumber.js');
 const BN = require('BN.js');
 const util = require('util');
+const fs = require('fs-extra')
 
 const TransferRulesMock = artifacts.require("TransferRulesMock");
 //const ExternalItrImitationMock = artifacts.require("ExternalItrImitationMock");
@@ -80,6 +81,110 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
     let tmp, tmp1, tmp2, tmpBool, tmpBool2, tmpBalance, tmpCounter, trTmp;
 
 
+    function write_data(_labels,_values) {
+        let _text = ''+
+'        <html>'+
+'	<head>'+
+'		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.1.3/Chart.min.js"></script>'+
+'	</head>'+
+'<body>'+
+'<div>'+
+'  <canvas id="myChart"></canvas>'+
+'  <script>'+
+'	var data_data = [];'+
+'	var canvas = document.getElementById("myChart");'+
+'	var data = {'+
+'		labels: '+JSON.stringify(_labels, null, 2)+','+
+'		datasets: ['+
+'			{'+
+'				label: "Token Price",                                       '+
+'				fill: false,                                                '+
+'				lineTension: 0.1,                                           '+
+'				backgroundColor: "rgba(75,192,192,0.4)",                    '+
+'				borderColor: "rgba(75,192,192,1)",                          '+
+'				borderCapStyle: "butt",                                     '+
+'				borderDash: [],                                             '+
+'				borderDashOffset: 0.0,                                      '+
+'				borderJoinStyle: "miter",                                   '+
+'				pointBorderColor: "rgba(75,192,192,1)",                     '+
+'				pointBackgroundColor: "#fff",                               '+
+'				pointBorderWidth: 1,                                        '+
+'				pointHoverRadius: 5,                                        '+
+'				pointHoverBackgroundColor: "rgba(75,192,192,1)",            '+
+'				pointHoverBorderColor: "rgba(220,220,220,1)",               '+
+'				pointHoverBorderWidth: 2,                                   '+
+'				pointRadius: 5,                                             '+
+'				pointHitRadius: 10,                                         '+
+'				data: '+JSON.stringify(_values[0], null, 2)+
+'			},                                                              '+
+'			{'+
+'				label: "Last Sell Price",                                   '+
+'				fill: false,                                                '+
+'				lineTension: 0.1,                                           '+
+'				backgroundColor: "rgba(230,30,50,0.4)",                    '+
+'				borderColor: "rgba(230,30,50,1)",                          '+
+'				borderCapStyle: "butt",                                     '+
+'				borderDash: [],                                             '+
+'				borderDashOffset: 0.0,                                      '+
+'				borderJoinStyle: "miter",                                   '+
+'				pointBorderColor: "rgba(230,30,50,1)",                     '+
+'				pointBackgroundColor: "#fff",                               '+
+'				pointBorderWidth: 1,                                        '+
+'				pointHoverRadius: 5,                                        '+
+'				pointHoverBackgroundColor: "rgba(230,30,50,1)",            '+
+'				pointHoverBorderColor: "rgba(220,220,220,1)",               '+
+'				pointHoverBorderWidth: 2,                                   '+
+'				pointRadius: 5,                                             '+
+'				pointHitRadius: 10,                                         '+
+'				data: '+JSON.stringify(_values[1], null, 2)+
+'			},                                                              '+
+'			{'+
+'				label: "Last Buy Price",                                    '+
+'				fill: false,                                                '+
+'				lineTension: 0.1,                                           '+
+'				backgroundColor: "rgba(80,180,80,0.4)",                    '+
+'				borderColor: "rgba(80,180,80,1)",                          '+
+'				borderCapStyle: "butt",                                     '+
+'				borderDash: [],                                             '+
+'				borderDashOffset: 0.0,                                      '+
+'				borderJoinStyle: "miter",                                   '+
+'				pointBorderColor: "rgba(80,180,80,1)",                     '+
+'				pointBackgroundColor: "#fff",                               '+
+'				pointBorderWidth: 1,                                        '+
+'				pointHoverRadius: 5,                                        '+
+'				pointHoverBackgroundColor: "rgba(80,180,80,1)",            '+
+'				pointHoverBorderColor: "rgba(220,220,220,1)",               '+
+'				pointHoverBorderWidth: 2,                                   '+
+'				pointRadius: 5,                                             '+
+'				pointHitRadius: 10,                                         '+
+'				data: '+JSON.stringify(_values[2], null, 2)+
+'			}                                                               '+
+'		]                                                                   '+
+'	};                                                                      '+
+'	var option = {                                                          '+
+'		showLines: true                                                     '+
+'	};                                                                      '+
+'	var myLineChart = Chart.Line(canvas,{                                   '+
+'		data:data,                                                          '+
+'		options:option                                                      '+
+'	});                                                                     '+
+'</script>                                                                  '+
+'</div>                                                                     '+
+'</body>                                                                    '+
+'</html>                                                                    '+
+'';
+        return new Promise(function(resolve, reject) {
+            fs.outputFile('./build/simulation_'+(Date.now() / 1000 | 0)+'.html', _text)
+            .then(() => {
+              console.log('Data written to file');
+              resolve();
+            })
+            .catch(err => {
+              console.error(err)
+            })
+        });
+    }
+
     async function statsView(objThis) {
 
         // console.log('================================');
@@ -122,6 +227,47 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         /**/
         // console.log('================================');
     }
+    
+    function decodefrom112(t) {
+        return (new BigNumber(t).div(2**112));
+    }
+    
+    async function setTmpValues(objThis, label) {
+        objThis._labels.push(label);
+        
+        tmp = await objThis.uniswapV2PairInstance.getReserves();
+        if (objThis.WETHAddr == objThis.token0) {
+            priceToken = tmp.reserve0 / tmp.reserve1;
+            priceETH = tmp.reserve1 / tmp.reserve0;
+        } else {
+            priceToken = tmp.reserve1 / tmp.reserve0;
+            priceETH = tmp.reserve0 / tmp.reserve1;
+        }
+        
+        
+        objThis._values[0].push(priceToken);
+        
+        tmp = await objThis.TradedTokenContractMockInstance.getLatestPrice();
+        objThis._values[1].push(decodefrom112(tmp));
+        
+        tmp = await objThis.TradedTokenContractMockInstance.getLatestBuyPrice();
+        objThis._values[2].push(decodefrom112(tmp));
+            
+            //console.log('priceToken =', (priceToken).toString());
+            //console.log('priceETH =', (priceETH).toString());
+            
+            
+        }
+        async function applyChartValues(objThis) {
+            objThis.labels = objThis.labels.concat(objThis._labels);
+            objThis.values[0] = objThis.values[0].concat(objThis._values[0]);
+            objThis.values[1] = objThis.values[1].concat(objThis._values[1]);
+            objThis.values[2] = objThis.values[2].concat(objThis._values[2]);
+            
+            
+            objThis._labels = [];
+            objThis._values = [[],[],[]];
+        }
 
 
     var TransferRulesInstance;
@@ -181,6 +327,15 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
   
     it('simulation', async () => {
         
+        this.labels = [];
+        this.values = [[],[],[]];
+        
+        
+        this._labels = this.labels;
+        this._values = this.values;
+        
+        
+        
         var objThis = this;
 
         await statsView(objThis);
@@ -190,7 +345,7 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
         
         let ITRContractBalanceBefore = await objThis.TradedTokenContractMockInstance.balanceOf(objThis.TradedTokenContractMockInstance.address);
 
-        let iterationCounts = 20,
+        let iterationCounts = 500,
             errorsHappened = 0,
             shouldSellCounts = 0,
             shouldBuyCounts = 0,
@@ -213,26 +368,26 @@ contract('TradedTokenContract and PancakeSwap', (accounts) => {
 objThis.TradedTokenContractMockInstance.getPastEvents("ShouldSell", { fromBlock: '0x0' }).then((events) => console.log(events));
 objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: '0x0' }).then((events) => console.log(events));
 
-
+        tmp = await objThis.uniswapV2PairInstance.getReserves();
+        if (objThis.WETHAddr == objThis.token0) {
+            priceToken = tmp.reserve0 / tmp.reserve1;
+            priceETH = tmp.reserve1 / tmp.reserve0;
+        } else {
+            priceToken = tmp.reserve1 / tmp.reserve0;
+            priceETH = tmp.reserve0 / tmp.reserve1;
+        }
+        
+        await setTmpValues(objThis, "Start");
+        
         while (i < iterationCounts) {
-
+            
 
 
             try {
                 console.log("                                   ");
                 console.log("--- iteration begin -#"+i+"--------");
                 
-                tmp = await objThis.uniswapV2PairInstance.getReserves();
-                if (objThis.WETHAddr == objThis.token0) {
-                    priceToken = tmp.reserve0 / tmp.reserve1;
-                    priceETH = tmp.reserve1 / tmp.reserve0;
-                } else {
-                    priceToken = tmp.reserve1 / tmp.reserve0;
-                    priceETH = tmp.reserve0 / tmp.reserve1;
-                }
-                
-                console.log('priceToken =', (priceToken).toString());
-                console.log('priceETH =', (priceETH).toString());
+
             
                 accountRandomIndex = Math.floor(Math.random() * accountsArr.length);
                 typeTodo = Math.floor(Math.random() * 2);
@@ -249,6 +404,9 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
 
                 if (typeTodo == 0) {
                     i++;
+                    
+                    
+                    
                     // swapExactETHForTokens
                     //totalBalance = await web3.eth.getBalance(accountOne);
                     amount2Send = Math.floor(Math.random() * 10 ** 21);
@@ -270,6 +428,9 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                     // tmp = await objThis.TradedTokenContractMockInstance.getttt();
                     // console.log('_currentSellPrice =', tmp[0].toString());
                     // console.log('_lastMaxSellPrice =', tmp[1].toString());
+                    
+                    await setTmpValues(objThis, "ETHForTokens");
+                    
                 } else {
                     // swap back
                     totalBalance = await objThis.TradedTokenContractMockInstance.balanceOf(accountsArr[accountRandomIndex]);
@@ -278,6 +439,7 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                         amount2Send = Math.floor(Math.random() * 10 ** (totalBalance.toString().length - 1));
                         if (totalBalance > amount2Send) {
                             i++;
+                            
                             //console.log("-------------------------");
                             console.log("swapExactTokensForETH");
                             console.log("totalBalanceaccountsArr["+accountRandomIndex+"] = ", totalBalance.toString());
@@ -309,8 +471,12 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                         continue;
                     }
                     
+                    await setTmpValues(objThis, "TokensForETH");
 
                 }
+                
+                
+                
 
                 await statsView(objThis);
                 // try to correct price externally after each iteration
@@ -335,6 +501,9 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                     }
                     console.log('priceToken =', (priceToken).toString());
                     console.log('priceETH =', (priceETH).toString());
+                    
+                    
+                    await setTmpValues(objThis, "ShouldSell");
                 } else {
                     console.log("--  no need to sell --");
                 }
@@ -356,6 +525,8 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                     }
                     console.log('priceToken =', (priceToken).toString());
                     console.log('priceETH =', (priceETH).toString());
+                    
+                    await setTmpValues(objThis, "ShouldBuy");
                 } else {
                     console.log("--  no need to buy --");
                     console.log("-- Event = "+tmp[1]+"-");
@@ -370,11 +541,13 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
                 console.log("-----------------");
                 // await objThis.TradedTokenContractMockInstance.buy({ from: accountTen });
                 
+                await applyChartValues(objThis);
+                
             }
             catch (e) {
                 console.log(e);
                 console.log('catch error');
-                errorsHappened ++;
+                errorsHappened++;
                 if (typeTodo == 0) {
                     //console.log("-------------------------");
                     console.log("swapExactETHForTokens");
@@ -411,8 +584,9 @@ objThis.TradedTokenContractMockInstance.getPastEvents("ShouldBuy", { fromBlock: 
         //console.log('getLogs=', (await objThis.TradedTokenContractMockInstance.getLogs()).toString());
         //console.log('getT=', (await objThis.TradedTokenContractMockInstance.getT()).toString());
 
-
-      
+        await write_data(objThis.labels, objThis.values);
+        
+        
     });
 
     //if need to view transaction cost consuming while tests

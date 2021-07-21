@@ -25,6 +25,10 @@ contract TradedTokenContractMock is TradedTokenContract {
         x = lastMaxSellPrice._x;
         
     }
+    function getLatestBuyPrice() public view returns(uint256 x){
+        x = lastBuyPrice._x;
+        
+    }
     
     function donateETH() public payable {
         

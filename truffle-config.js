@@ -122,7 +122,12 @@ module.exports = {
 
   // Set default mocha options here, use special reporters etc.
   mocha: {
-    // timeout: 100000
+    timeout: 30000000
+    
+    // enableTimeouts - boolean, Enable timeouts?
+    // timeout - number|string, Specify test timeout threshold (in milliseconds)
+    // bail - boolean, Bail after first test failure?
+    // retries - number, Retry failed tests this many times
   },
 
   // Configure your compilers
