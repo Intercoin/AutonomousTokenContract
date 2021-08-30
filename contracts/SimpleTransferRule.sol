@@ -14,7 +14,7 @@ interface ITransferRules {
  * @title TransferRules contract
  * @dev Contract that is checking if on-chain rules for token transfers are concluded.
  */
-contract TransferRules is Initializable, OwnableUpgradeable, ITransferRules {
+contract SimpleTransferRule is Initializable, OwnableUpgradeable, ITransferRules {
     using SafeMathUpgradeable for uint256;
     
     address internal _src20;
