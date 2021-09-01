@@ -84,7 +84,7 @@ module.exports = {
     mainnet: {
         provider: () => new HDWalletProvider(secretTestnet.mnemonic, 'https://mainnet.infura.io/v3/'+secretTestnet.infura_project_id),
         network_id: 1,       // Rinkeby's id
-        gas: 9000000,        
+        //gas: 9000000,        
         //confirmations: 2,    
         timeoutBlocks: 200,  
         skipDryRun: true     // Skip dry run before migrations? (default: false for public nets )
