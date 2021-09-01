@@ -100,6 +100,7 @@ TotalSupply are 1_000_000_000 tokens
 
 #### initialize
 Params:
+
 name  | type | description
 --|--|--
 name|string| ERC777 token's name 
@@ -115,6 +116,7 @@ _disbursementList|<a href="#disbursementList">tuple</a>[]|array of tuples like [
         
 #### startPool
 Params:
+
 name  | type | description
 --|--|--
 price|uint256| price mul by 1e9
@@ -125,6 +127,7 @@ token's amount and eth will be added to liquidity pool.
 
 #### updateRestrictionsAndRules
 Params:
+
 name  | type | description
 --|--|--
 rules|address| TransferRules address contract
@@ -133,6 +136,7 @@ TransferRules contract flow validation described <a href="https://github.com/Int
 
 #### bulkTransfer
 Params:
+
 name  | type | description
 --|--|--
 _bulkStruct|tuple[] array of tuples [recipient, address]
@@ -147,6 +151,7 @@ mechanism to smooth out buy and sell prices. Contract will buyback some tokens f
 ## Tuples
 #### BulkStruct
 Params:
+
 name  | type | description
 --|--|--
 recipient|address| address
@@ -154,6 +159,7 @@ amount|uint256| amount
 
 #### BuyTax
 Params:
+
 name  | type | description
 --|--|--
 percentOfTokenAmount|uint256| percent of LP token's reserve that need to be buyback by contract
@@ -163,6 +169,7 @@ percentOfSellPrice|uint256| buyback price will update after everytime when contr
 
 #### SellTax
 Params:
+
 name  | type | description
 --|--|--
 percentOfTokenAmount|uint256| percent of LP token's reserve that need to be sell by contract
@@ -171,6 +178,7 @@ slippage|uint256| slippage
 
 #### TransferTax
 Params:
+
 name  | type | description
 --|--|--
 total|uint256| calculate percent of transfer that applied on each usual transfer(not exchange with Uniswap)
@@ -179,6 +187,7 @@ toBurn|uint256| percent of LP tokens that contract will burn after adding liquid
 
 #### ProgressiveTax
 Params:
+
 name  | type | description
 --|--|--
 from|uint256| percent
@@ -187,6 +196,7 @@ duration|uint256| progressive tax  can be applied to user by this duration
 
 #### DisbursementList
 Params:
+
 name  | type | description
 --|--|--
 addr|address| address
