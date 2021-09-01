@@ -35,8 +35,8 @@ abstract contract BaseTransferRule is Initializable, OwnableUpgradeable, ITransf
     
     function setChain(address chainAddr) public onlyOwner() {
         _setChain(chainAddr);
-        //require(_tryExternalSetSRC(_src20), "can't call setSRC at chain contract");
-        _tryExternalSetSRC(chainAddr);
+        require(_tryExternalSetSRC(_src20), "can't call setSRC at chain contract");
+        
     }
     
     
@@ -91,9 +91,8 @@ abstract contract BaseTransferRule is Initializable, OwnableUpgradeable, ITransf
     //---------------------------------------------------------------------------------
     // private  section
     //---------------------------------------------------------------------------------
-    event StringFailure(string stringFailure);
-    event BytesFailure(bytes bytesFailure);
-    function _tryExternalSetSRC(address chainAddr) public returns (bool) {
+
+    function _tryExternalSetSRC(address chainAddr) private returns (bool) {
         try ITransferRules(chainAddr).setSRC(_src20) returns (bool) {
             return (true);
         } catch Error(string memory /*reason*/) {
