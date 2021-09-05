@@ -3,9 +3,15 @@ pragma solidity ^0.8.0;
 
 import "../../interfaces/src20/ITransferRules.sol";
 import "./MockRuleSettings.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 contract MockSRC20 is MockRuleSettings {
+    
+    using SafeMathUpgradeable for uint256;
+    
     ITransferRules public _rules;
+    mapping(address => uint256) public _balances;
+    
     event RestrictionsAndRulesUpdated(address restrictions, address rules);
     event Transfer(address from, address to, uint256 value);
    
@@ -26,7 +32,7 @@ contract MockSRC20 is MockRuleSettings {
     function executeTransfer(address from, address to, uint256 value) external/* onlyAuthority*/ returns (bool) {
         
         emit executeTransferHappens(from, to, value);
-        //_transfer(from, to, value);
+        _transfer(from, to, value);
         return true;
     }
     function updateRestrictionsAndRules(address restrictions, address rules) external /* onlyDelegate*/ returns (bool) {
@@ -46,11 +52,18 @@ contract MockSRC20 is MockRuleSettings {
     function _transfer(address from, address to, uint256 value) internal {
         require(to != address(0), "Recipient is zero address");
 
-        // _balances[from] = _balances[from].sub(value);
-        // _balances[to] = _balances[to].add(value);
+        _balances[from] = _balances[from].sub(value);
+        _balances[to] = _balances[to].add(value);
 
-        // _nonce[from]++;
+        //_nonce[from]++;
 
         emit Transfer(from, to, value);
+    }
+    function mint(address to, uint256 value) public {
+        _balances[to] = _balances[to].add(value);
+    
+    }
+    function balanceOf(address to) public view returns(uint256) {
+        return _balances[to];
     }
 }

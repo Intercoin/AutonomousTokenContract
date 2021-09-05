@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 import "../interfaces/src20/ITransferRules.sol";
 import "../interfaces/src20/ISRC20.sol";
