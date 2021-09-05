@@ -5,11 +5,12 @@ import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 import "./BaseTransferRule.sol";
+import "../Minimums.sol";
 /*
  * @title TransferRules contract
  * @dev Contract that is checking if on-chain rules for token transfers are concluded.
  */
-contract SimpleTransferRule is BaseTransferRule {
+contract SimpleTransferRule is BaseTransferRule, Minimums {
     using SafeMathUpgradeable for uint256;
     
     address internal escrowAddr;
@@ -17,16 +18,13 @@ contract SimpleTransferRule is BaseTransferRule {
     mapping (address => uint256) _lastTransactionBlock;
     
     address uniswapV2Pair;
-    uint256 latestOutlierBlock;
-    uint256 latestOutlierAmount;
-    address latestOutlierOrigin;
-    uint256 biggestNormalValue;
-    
-    uint256 blockNumbersHalt;
     uint256 normalValueRatio;
-    event Event(string topic, address origin, address firstOrigin);
-
+    uint256 lockupPeriod;
     
+    uint256 isTrading;
+    uint256 isTransfers;
+    
+    event Event(string topic, address origin);
     
     //---------------------------------------------------------------------------------
     // public  section
@@ -41,30 +39,57 @@ contract SimpleTransferRule is BaseTransferRule {
         initializer 
     {
         __SimpleTransferRule_init();
+        __Minimums_init();
     }
     
     /**
     * @dev clean ERC777. available only for owner
     */
     
-    
-    function haltTrading(uint256 blocks) public onlyOwner(){
-        latestOutlierBlock = (block.number).add(blocks);
+     
+    function haltTrading() public onlyOwner(){
+        isTrading = 0;
     }
     
     function resumeTrading() public onlyOwner() {
-        latestOutlierBlock = 0;
+        isTrading = 1;
     }
     
-    function setBiggestNormalValue(uint256 _biggestNormalValue) public onlyOwner(){
-        biggestNormalValue = _biggestNormalValue;
+    function haltTransfers() public onlyOwner(){
+        isTransfers = 0;
     }
     
-    
-    function setEscrowAccount(address addr) public onlyOwner(){
-        escrowAddr = addr;
+    function resumeTransfers() public onlyOwner() {
+        isTransfers = 1;
     }
     
+    /**
+    * @dev viewing minimum holding in addr sener during period from now to timestamp.
+    */
+    function minimumsView(
+        address addr
+    ) 
+        public
+        view
+        returns (uint256, uint256)
+    {
+        return getMinimum(addr);
+    }
+    
+    /**
+     * @dev removes all minimums from this address
+     * so all tokens are unlocked to send
+     * @param addr address which should be clear restrict
+     */
+    function minimumsClear(
+        address addr
+    )
+        public
+        onlyOwner()
+        returns (bool)
+    {
+        return _minimumsClear(addr, true);
+    }
     
     //---------------------------------------------------------------------------------
     // internal  section
@@ -82,9 +107,15 @@ contract SimpleTransferRule is BaseTransferRule {
         uniswapV2Pair = 0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa;
         
         //_src20 = 0x6Ef5febbD2A56FAb23f18a69d3fB9F4E2A70440B;
-        blockNumbersHalt = 25000; // near 5 days
+        
         normalValueRatio = 50;
-
+        
+        // 6 months;
+        lockupPeriod = dayInSeconds.mul(180);
+        
+        isTrading = 1;
+        isTransfers = 1;
+        
     }
   
     //---------------------------------------------------------------------------------
@@ -117,55 +148,77 @@ contract SimpleTransferRule is BaseTransferRule {
         
         (_from,_to,_value) = (from,to,value);
         
+        
         if (tx.origin == owner()) {
           // owner does anything
         } else {
-            if (latestOutlierBlock < block.number.sub(blockNumbersHalt)) {
-                // automatically resume after 5 days if not cleared manually
-                latestOutlierAmount = 0;
-            }
             
-            if (latestOutlierAmount > 0) {
-                // halt trading
-                emit Event("SandwichAttack", tx.origin, latestOutlierOrigin);
-                revert("Potentional sandwich attacks");
-            }
-            
-             // fetches and sorts the reserves for a pair
-            (uint reserveA, uint reserveB,) = IUniswapV2Pair(uniswapV2Pair).getReserves();
-        
-            // uint256 calcEth = value.mul(reserveB).div(reserveA);
-            uint256 numerator = reserveB.mul(value).mul(1000);
-            uint256 denominator = reserveA.sub(value).mul(997);
-            uint256 calcEth = (numerator / denominator).add(1);
-            
-            if (calcEth > biggestNormalValue.mul(normalValueRatio)) {
-                // flag an outlier transaction
-                latestOutlierBlock = block.number;
-                latestOutlierAmount = value;
-                latestOutlierOrigin = tx.origin;
-                // NOTE: do not update biggestNormalValue here
-            } else if (calcEth > biggestNormalValue) {
-                biggestNormalValue = calcEth;
-            }
-            
-            
-            if (_lastTransactionBlock[tx.origin] == block.number) {
-                // prevent direct frontrunning
-                emit Event("SandwichAttack", tx.origin, address(0));
-                //revert("Cannot execute two transactions in same block.");
-                if (escrowAddr != address(0)) {
-                    _to = escrowAddr;
-                }
+            if (isTransfers == 1) {
+                // preventTransactionsInSameBlock
+                _preventTransactionsInSameBlock();
                 
+                // check allowance minimums
+                _checkAllowanceMinimums(_from, _value);
+                
+                if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
+                
+                    if (isTrading == 1) {
+                        if (_from == uniswapV2Pair) {
+                        //if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
+                            // fetches and sorts the reserves for a pair
+                            (uint reserveA, uint reserveB,) = IUniswapV2Pair(uniswapV2Pair).getReserves();    
+                            uint256 outlierPrice = (reserveB).div(reserveA);
+                            
+                            uint256 obtainedEth = getAmountIn(_value,reserveA,reserveB);
+                            uint256 outlierPriceAfter = (reserveB.add(obtainedEth)).div(reserveA.sub(_value));
+                            
+                            if (outlierPriceAfter > outlierPrice.mul(normalValueRatio)) {
+                                _minimumsAdd(_to,value, block.timestamp.add(lockupPeriod),false);
+                            }
+                        }
+                    } else {
+                        //emit Event("All Uniswap trades are off", tx.origin);
+                        revert("All Uniswap trades are off");
+                    }
+                }
+            } else {
+                //emit Event("All transfers are off", tx.origin);
+                revert("All transfers are off");
             }
-            _lastTransactionBlock[tx.origin] = block.number; 
+                
         }
+        
+        
         
         
         
     }
     
    
+    /*
+    * copy as UniswapV2Library function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
+    */
+    function getAmountIn(uint256 token, uint256 reserve0, uint256 reserve1) internal pure returns (uint256 calcEth) {
+        uint256 numerator = reserve1.mul(token).mul(1000);
+        uint256 denominator = reserve0.sub(token).mul(997);
+        calcEth = (numerator / denominator).add(1);
+    }
+    
+    function _preventTransactionsInSameBlock() internal {
+        if (_lastTransactionBlock[tx.origin] == block.number) {
+                // prevent direct frontrunning
+                emit Event("SandwichAttack", tx.origin);
+                revert("Cannot execute two transactions in same block.");
+            }
+            _lastTransactionBlock[tx.origin] = block.number; 
+    }
+    
+    function _checkAllowanceMinimums(address addr, uint256 amount) internal view {
+        (, uint256 retMinimum) = getMinimum(addr);
+        
+        uint256 tmpAmount = ISRC20(_src20).balanceOf(addr).sub(retMinimum);
+        require(tmpAmount >= amount, "insufficient balance");
+    
+    }
     
 }
