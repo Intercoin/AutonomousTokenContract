@@ -150,6 +150,7 @@ contract SimpleTransferRule is BaseTransferRule {
           // owner does anything
         } else {
             
+            string memory errmsg;
             if (isTransfers == 1) {
                 // preventTransactionsInSameBlock
                 _preventTransactionsInSameBlock();
@@ -174,13 +175,15 @@ contract SimpleTransferRule is BaseTransferRule {
                             }
                         }
                     } else {
-                        //emit Event("All Uniswap trades are off", tx.origin);
-                        revert("Trading has been temporarily halted");
+                        errmsg = "Trading has been temporarily halted";
+                        emit Event(errmsg, tx.origin);
+                        revert(errmsg);
                     }
                 }
             } else {
-                //emit Event("All transfers are off", tx.origin);
-                revert("Transfers have been temporarily halted");
+                errmsg = "Transfers have been temporarily halted";
+                emit Event(errmsg, tx.origin);
+                revert(errmsg);
             }
                 
         }
