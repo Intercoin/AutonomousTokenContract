@@ -6,11 +6,12 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 import "./BaseTransferRule.sol";
 import "../Minimums.sol";
+
 /*
  * @title TransferRules contract
  * @dev Contract that is checking if on-chain rules for token transfers are concluded.
  */
-contract SimpleTransferRule is BaseTransferRule, Minimums {
+contract SimpleTransferRule is BaseTransferRule {
     using SafeMathUpgradeable for uint256;
     
     address internal escrowAddr;
@@ -20,10 +21,20 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
     address uniswapV2Pair;
     uint256 normalValueRatio;
     uint256 lockupPeriod;
+    uint256 dayInSeconds;
     
     uint256 isTrading;
     uint256 isTransfers;
     
+    struct Minimum {
+        uint256 amount;
+        uint256 startTime;
+        uint256 endTime;
+        bool gradual;
+    }
+
+    mapping(address => Minimum[]) _minimums;
+         
     event Event(string topic, address origin);
     
     //---------------------------------------------------------------------------------
@@ -39,7 +50,7 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
         initializer 
     {
         __SimpleTransferRule_init();
-        __Minimums_init();
+        
     }
     
     /**
@@ -71,26 +82,11 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
     ) 
         public
         view
-        returns (uint256, uint256)
+        returns (uint256)
     {
-        return getMinimum(addr);
+        return _minimumsGet(addr, block.timestamp);
     }
-    
-    /**
-     * @dev removes all minimums from this address
-     * so all tokens are unlocked to send
-     * @param addr address which should be clear restrict
-     */
-    function minimumsClear(
-        address addr
-    )
-        public
-        onlyOwner()
-        returns (bool)
-    {
-        return _minimumsClear(addr, true);
-    }
-    
+     
     //---------------------------------------------------------------------------------
     // internal  section
     //---------------------------------------------------------------------------------
@@ -111,6 +107,7 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
         normalValueRatio = 50;
         
         // 6 months;
+        dayInSeconds = 86400;
         lockupPeriod = dayInSeconds.mul(180);
         
         isTrading = 1;
@@ -173,7 +170,7 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
                             uint256 outlierPriceAfter = (reserveB.add(obtainedEth)).div(reserveA.sub(_value));
                             
                             if (outlierPriceAfter > outlierPrice.mul(normalValueRatio)) {
-                                _minimumsAdd(_to,value, block.timestamp.add(lockupPeriod),false);
+                                _minimumsAdd(_to,value, lockupPeriod, true);
                             }
                         }
                     } else {
@@ -214,11 +211,67 @@ contract SimpleTransferRule is BaseTransferRule, Minimums {
     }
     
     function _checkAllowanceMinimums(address addr, uint256 amount) internal view {
-        (, uint256 retMinimum) = getMinimum(addr);
+        uint256 minimum = _minimumsGet(addr, block.timestamp);
+       
+        uint256 canBeTransferring = ISRC20(_src20).balanceOf(addr).sub(minimum);
+        require(canBeTransferring >= amount, "insufficient balance to maintain minimum lockup");
         
-        uint256 tmpAmount = ISRC20(_src20).balanceOf(addr).sub(retMinimum);
-        require(tmpAmount >= amount, "insufficient balance");
+    }
     
+    /**
+     *  amount to lock up
+     */
+    function _minimumsAdd(
+        address addr,
+        uint256 amount,
+        uint256 duration,
+        bool gradual
+    ) 
+        internal
+    {
+        
+        
+        Minimum memory minimum = Minimum({
+              amount: amount,
+              startTime: block.timestamp,
+              endTime: block.timestamp.add(duration),
+              gradual: gradual
+        });
+        _minimums[addr].push(minimum);
+    }
+      
+    /**
+     * amount that locked up for `addr` in `currentTime`
+     */
+    function _minimumsGet(
+        address addr,
+        uint256 currentTime
+    ) 
+        internal 
+        view
+        returns (uint256) 
+    {
+         
+        uint256 minimum = 0;
+        uint256 c = _minimums[addr].length;
+        uint256 m;
+        
+        for (uint256 i=0; i<c; i++) {
+            if (
+                _minimums[addr][i].startTime > currentTime || 
+                _minimums[addr][i].endTime < currentTime 
+                ) {
+                continue;
+            }
+            
+            m = _minimums[addr][i].amount;
+            if (_minimums[addr][i].gradual) {
+                m = m.mul(_minimums[addr][i].endTime.sub(currentTime)).div(_minimums[addr][i].endTime.sub(_minimums[addr][i].startTime));
+            }
+            minimum = minimum.add(m);
+        }
+        return minimum;
     }
     
 }
+
