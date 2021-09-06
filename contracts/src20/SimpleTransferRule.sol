@@ -175,12 +175,12 @@ contract SimpleTransferRule is BaseTransferRule {
                         }
                     } else {
                         //emit Event("All Uniswap trades are off", tx.origin);
-                        revert("All Uniswap trades are off");
+                        revert("Trading has been temporarily halted");
                     }
                 }
             } else {
                 //emit Event("All transfers are off", tx.origin);
-                revert("All transfers are off");
+                revert("Transfers have been temporarily halted");
             }
                 
         }
