@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "./BaseTransferRule.sol";
 import "../Minimums.sol";
@@ -13,12 +14,14 @@ import "../Minimums.sol";
  */
 contract SimpleTransferRule is BaseTransferRule {
     using SafeMathUpgradeable for uint256;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     
     address internal escrowAddr;
     
     mapping (address => uint256) _lastTransactionBlock;
     
-    address uniswapV2Pair;
+    //address uniswapV2Pair;
+    EnumerableSetUpgradeable.AddressSet uniswapV2Pairs;
     uint256 normalValueRatio;
     uint256 lockupPeriod;
     uint256 dayInSeconds;
@@ -74,6 +77,20 @@ contract SimpleTransferRule is BaseTransferRule {
         isTransfers = 1;
     }
     
+    function newPairAdd(address pair) public onlyOwner() {
+        uniswapV2Pairs.add(pair);
+    }
+    function newPairRemove(address pair) public onlyOwner() {
+        uniswapV2Pairs.remove(pair);
+    }
+    function newPairsList() public view returns(address[] memory) {
+        uint256 c = uniswapV2Pairs.length();
+        address[] memory ret = new address[](c);
+        for (uint256 i=0; i<c;i++) {
+            ret[i] = (uniswapV2Pairs.at(i));
+        }
+        return ret;
+    }
     /**
     * @dev viewing minimum holding in addr sener during period from now to timestamp.
     */
@@ -100,9 +117,10 @@ contract SimpleTransferRule is BaseTransferRule {
         initializer 
     {
         __BaseTransferRule_init();
-        uniswapV2Pair = 0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa;
+        //uniswapV2Pair = 0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa;
+        uniswapV2Pairs.add(0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa);
         
-        //_src20 = 0x6Ef5febbD2A56FAb23f18a69d3fB9F4E2A70440B;
+        _src20 = 0x6Ef5febbD2A56FAb23f18a69d3fB9F4E2A70440B;
         
         normalValueRatio = 50;
         
@@ -158,17 +176,20 @@ contract SimpleTransferRule is BaseTransferRule {
                 // check allowance minimums
                 _checkAllowanceMinimums(_from, _value);
                 
-                if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
+                //if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
+                if (uniswapV2Pairs.contains(_from) || uniswapV2Pairs.contains(_to)) {
                 
                     if (isTrading == 1) {
-                        if (_from == uniswapV2Pair) {
-                        //if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
+                        //if (_from == uniswapV2Pair) {
+                        if (uniswapV2Pairs.contains(_from)) {
+                            address uniswapV2Pair = _from;
+                        
                             // fetches and sorts the reserves for a pair
-                            (uint reserveA, uint reserveB,) = IUniswapV2Pair(uniswapV2Pair).getReserves();    
+                            (uint reserveA, uint reserveB) = getReserves(uniswapV2Pair);
                             uint256 outlierPrice = (reserveB).div(reserveA);
                             
-                            uint256 obtainedEth = getAmountIn(_value,reserveA,reserveB);
-                            uint256 outlierPriceAfter = (reserveB.add(obtainedEth)).div(reserveA.sub(_value));
+                            uint256 obtainedTokenB = getAmountIn(_value,reserveA,reserveB);
+                            uint256 outlierPriceAfter = (reserveB.add(obtainedTokenB)).div(reserveA.sub(_value));
                             
                             if (outlierPriceAfter > outlierPrice.mul(normalValueRatio)) {
                                 _minimumsAdd(_to,value, lockupPeriod, true);
@@ -188,10 +209,6 @@ contract SimpleTransferRule is BaseTransferRule {
                 
         }
         
-        
-        
-        
-        
     }
     
    
@@ -204,6 +221,12 @@ contract SimpleTransferRule is BaseTransferRule {
         calcEth = (numerator / denominator).add(1);
     }
     
+    // reserveA is reserves of src20
+    function getReserves(address uniswapV2Pair) internal returns (uint256 reserveA, uint256 reserveB) {
+        (reserveA, reserveB,) = IUniswapV2Pair(uniswapV2Pair).getReserves();   
+        (reserveA, reserveB) = (_src20 == IUniswapV2Pair(uniswapV2Pair).token0()) ? (reserveA, reserveB) : (reserveB, reserveA);
+    }
+
     function _preventTransactionsInSameBlock() internal {
         if (_lastTransactionBlock[tx.origin] == block.number) {
                 // prevent direct frontrunning
