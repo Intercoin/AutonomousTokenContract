@@ -97,6 +97,14 @@ contract SimpleTransferRule is BaseTransferRule {
     {
         return _minimumsGet(addr, block.timestamp);
     }
+    function minimumsClear(
+        address addr
+    ) 
+        public
+        onlyOwner()
+    {
+        delete _minimums[addr];
+    }
      
     
     //---------------------------------------------------------------------------------
@@ -117,7 +125,7 @@ contract SimpleTransferRule is BaseTransferRule {
         
         _src20 = 0x6Ef5febbD2A56FAb23f18a69d3fB9F4E2A70440B;
         
-        normalValueRatio = 50;
+        normalValueRatio = 10;
         
         // 6 months;
         dayInSeconds = 86400;
@@ -178,7 +186,7 @@ contract SimpleTransferRule is BaseTransferRule {
         // check allowance minimums
         _checkAllowanceMinimums(_from, _value);
 
-        if ((indexOf(uniswapV2Pairs,_from) != -1) && (indexOf(uniswapV2Pairs,_to) != -1)) {
+        if ((indexOf(uniswapV2Pairs,_from) == -1) && (indexOf(uniswapV2Pairs,_to) == -1)) {
             return  (_from,_to,_value);
         }
             
@@ -233,11 +241,11 @@ contract SimpleTransferRule is BaseTransferRule {
 
     function _preventTransactionsInSameBlock() internal {
         if (_lastTransactionBlock[tx.origin] == block.number) {
-                // prevent direct frontrunning
-                emit Event("SandwichAttack", tx.origin);
-                revert("Cannot execute two transactions in same block.");
-            }
-            _lastTransactionBlock[tx.origin] = block.number; 
+            // prevent direct frontrunning
+            emit Event("SandwichAttack", tx.origin);
+            revert("Cannot execute two transactions in same block.");
+        }
+        _lastTransactionBlock[tx.origin] = block.number; 
     }
     
     function _checkAllowanceMinimums(address addr, uint256 amount) internal view {
