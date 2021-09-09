@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol';
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "./BaseTransferRule.sol";
-import "../Minimums.sol";
+//import "../Minimums.sol";
 
 /*
  * @title TransferRules contract
@@ -14,14 +14,14 @@ import "../Minimums.sol";
  */
 contract SimpleTransferRule is BaseTransferRule {
     using SafeMathUpgradeable for uint256;
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+    //using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
     
     address internal escrowAddr;
     
     mapping (address => uint256) _lastTransactionBlock;
     
     //address uniswapV2Pair;
-    EnumerableSetUpgradeable.AddressSet uniswapV2Pairs;
+    address[] uniswapV2Pairs;
     uint256 normalValueRatio;
     uint256 lockupPeriod;
     uint256 dayInSeconds;
@@ -77,19 +77,13 @@ contract SimpleTransferRule is BaseTransferRule {
         isTransfers = 1;
     }
     
-    function newPairAdd(address pair) public onlyOwner() {
-        uniswapV2Pairs.add(pair);
+    function pairsAdd(address pair) public onlyOwner() {
+        
+        uniswapV2Pairs.push(pair);
     }
-    function newPairRemove(address pair) public onlyOwner() {
-        uniswapV2Pairs.remove(pair);
-    }
-    function newPairsList() public view returns(address[] memory) {
-        uint256 c = uniswapV2Pairs.length();
-        address[] memory ret = new address[](c);
-        for (uint256 i=0; i<c;i++) {
-            ret[i] = (uniswapV2Pairs.at(i));
-        }
-        return ret;
+    
+    function pairsList() public view returns(address[] memory) {
+         return uniswapV2Pairs;
     }
     /**
     * @dev viewing minimum holding in addr sener during period from now to timestamp.
@@ -104,6 +98,7 @@ contract SimpleTransferRule is BaseTransferRule {
         return _minimumsGet(addr, block.timestamp);
     }
      
+    
     //---------------------------------------------------------------------------------
     // internal  section
     //---------------------------------------------------------------------------------
@@ -118,7 +113,7 @@ contract SimpleTransferRule is BaseTransferRule {
     {
         __BaseTransferRule_init();
         //uniswapV2Pair = 0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa;
-        uniswapV2Pairs.add(0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa);
+        uniswapV2Pairs.push(0x03B0da178FecA0b0BBD5D76c431f16261D0A76aa);
         
         _src20 = 0x6Ef5febbD2A56FAb23f18a69d3fB9F4E2A70440B;
         
@@ -163,55 +158,64 @@ contract SimpleTransferRule is BaseTransferRule {
         
         (_from,_to,_value) = (from,to,value);
         
+        // owner does anything
         
         if (tx.origin == owner()) {
-          // owner does anything
-        } else {
+            return  (_from,_to,_value);
+        }
             
-            string memory errmsg;
-            if (isTransfers == 1) {
-                // preventTransactionsInSameBlock
-                _preventTransactionsInSameBlock();
-                
-                // check allowance minimums
-                _checkAllowanceMinimums(_from, _value);
-                
-                //if ((_from == uniswapV2Pair) || (_to == uniswapV2Pair)) {
-                if (uniswapV2Pairs.contains(_from) || uniswapV2Pairs.contains(_to)) {
-                
-                    if (isTrading == 1) {
-                        //if (_from == uniswapV2Pair) {
-                        if (uniswapV2Pairs.contains(_from)) {
-                            address uniswapV2Pair = _from;
-                        
-                            // fetches and sorts the reserves for a pair
-                            (uint reserveA, uint reserveB) = getReserves(uniswapV2Pair);
-                            uint256 outlierPrice = (reserveB).div(reserveA);
-                            
-                            uint256 obtainedTokenB = getAmountIn(_value,reserveA,reserveB);
-                            uint256 outlierPriceAfter = (reserveB.add(obtainedTokenB)).div(reserveA.sub(_value));
-                            
-                            if (outlierPriceAfter > outlierPrice.mul(normalValueRatio)) {
-                                _minimumsAdd(_to,value, lockupPeriod, true);
-                            }
-                        }
-                    } else {
-                        errmsg = "Trading has been temporarily halted";
-                        emit Event(errmsg, tx.origin);
-                        revert(errmsg);
-                    }
-                }
-            } else {
-                errmsg = "Transfers have been temporarily halted";
-                emit Event(errmsg, tx.origin);
-                revert(errmsg);
-            }
-                
+        string memory errmsg;
+        
+        if (isTransfers == 0) {
+            errmsg = "Transfers have been temporarily halted";
+            emit Event(errmsg, tx.origin);
+            revert(errmsg);
+        }
+            
+        // preventTransactionsInSameBlock
+        _preventTransactionsInSameBlock();
+        
+        // check allowance minimums
+        _checkAllowanceMinimums(_from, _value);
+
+        if (!indexOf(uniswapV2Pairs,_from) && !indexOf(uniswapV2Pairs,_to)) {
+            return  (_from,_to,_value);
+        }
+            
+        if (isTrading == 0) {
+            errmsg = "Trading has been temporarily halted";
+            emit Event(errmsg, tx.origin);
+            revert(errmsg);
         }
         
+
+        if (indexOf(uniswapV2Pairs,_from)) {
+            address uniswapV2Pair = _from;
+        
+            // fetches and sorts the reserves for a pair
+            (uint reserveA, uint reserveB) = getReserves(uniswapV2Pair);
+            uint256 outlierPrice = (reserveB).div(reserveA);
+            
+            uint256 obtainedTokenB = getAmountIn(_value,reserveA,reserveB);
+            uint256 outlierPriceAfter = (reserveB.add(obtainedTokenB)).div(reserveA.sub(_value));
+            
+            if (outlierPriceAfter > outlierPrice.mul(normalValueRatio)) {
+                _minimumsAdd(_to,value, lockupPeriod, true);
+            }
+        }
+         
     }
     
-   
+    function indexOf(address[] memory arr, address item) internal view returns(bool) {
+        
+        for(uint256 i = 0; i < arr.length; i++) {
+            if (arr[i] == item) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
     /*
     * copy as UniswapV2Library function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
     */
