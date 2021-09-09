@@ -178,7 +178,7 @@ contract SimpleTransferRule is BaseTransferRule {
         // check allowance minimums
         _checkAllowanceMinimums(_from, _value);
 
-        if (!(indexOf(uniswapV2Pairs,_from) != -1) && !(indexOf(uniswapV2Pairs,_to) != -1)) {
+        if ((indexOf(uniswapV2Pairs,_from) != -1) && (indexOf(uniswapV2Pairs,_to) != -1)) {
             return  (_from,_to,_value);
         }
             
