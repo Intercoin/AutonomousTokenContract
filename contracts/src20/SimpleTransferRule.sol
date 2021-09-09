@@ -178,7 +178,7 @@ contract SimpleTransferRule is BaseTransferRule {
         // check allowance minimums
         _checkAllowanceMinimums(_from, _value);
 
-        if (!indexOf(uniswapV2Pairs,_from) && !indexOf(uniswapV2Pairs,_to)) {
+        if (!(indexOf(uniswapV2Pairs,_from) != -1) && !(indexOf(uniswapV2Pairs,_to) != -1)) {
             return  (_from,_to,_value);
         }
             
@@ -189,7 +189,7 @@ contract SimpleTransferRule is BaseTransferRule {
         }
         
 
-        if (indexOf(uniswapV2Pairs,_from)) {
+        if (indexOf(uniswapV2Pairs,_from) != -1) {
             address uniswapV2Pair = _from;
         
             // fetches and sorts the reserves for a pair
@@ -206,15 +206,15 @@ contract SimpleTransferRule is BaseTransferRule {
          
     }
     
-    function indexOf(address[] memory arr, address item) internal view returns(bool) {
+    function indexOf(address[] memory arr, address item) internal view returns(int32) {
         
-        for(uint256 i = 0; i < arr.length; i++) {
+        for(uint32 i = 0; i < arr.length; i++) {
             if (arr[i] == item) {
-                return true;
+                return int32(i);
             }
         }
         
-        return false;
+        return -1;
     }
     /*
     * copy as UniswapV2Library function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut)
